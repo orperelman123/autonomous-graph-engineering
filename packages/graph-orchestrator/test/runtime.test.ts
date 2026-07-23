@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,7 +57,6 @@ test("executes a read-only graph and writes a replayable JSONL audit", async () 
     await rm(directory, { recursive: true, force: true });
   }
 });
-
 test("stops at a human gate until the exact gate is approved", async () => {
   const directory = await mkdtemp(join(tmpdir(), "graph-gate-"));
   try {

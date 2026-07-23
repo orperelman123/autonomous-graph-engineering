@@ -1,4 +1,4 @@
-﻿import type { RefinementResult } from "@autonomous-graph-engineering/prompt-refiner";
+import type { RefinementResult } from "@autonomous-graph-engineering/prompt-refiner";
 
 export type AutonomyLevel =
   | "plan_only"
@@ -39,7 +39,6 @@ export interface GraphBudgets {
   maxEstimatedTokens: number;
   maxActualTokens?: number;
 }
-
 export interface GraphNode {
   id: string;
   label: string;
