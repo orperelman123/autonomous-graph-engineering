@@ -1,4 +1,4 @@
-﻿import type { RefinementResult } from "@autonomous-graph-engineering/prompt-refiner";
+import type { RefinementResult } from "@autonomous-graph-engineering/prompt-refiner";
 
 export type AutonomyLevel =
   | "plan_only"

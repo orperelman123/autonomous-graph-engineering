@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@autonomous-graph-engineering/graph-engineer",
   "version": "0.1.0",
   "description": "Permission-safe autonomous graph orchestration for Codex and Claude Code.",

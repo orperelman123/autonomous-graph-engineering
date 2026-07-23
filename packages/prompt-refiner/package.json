@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@autonomous-graph-engineering/prompt-refiner",
   "version": "0.1.0",
   "description": "Intent-preserving prompt refinement and execution briefs for agent workflows.",

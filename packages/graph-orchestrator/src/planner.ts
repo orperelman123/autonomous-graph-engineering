@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { compilePrompt } from "@autonomous-graph-engineering/prompt-refiner";
 import type {
   AutonomyLevel,
