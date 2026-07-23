@@ -34,7 +34,25 @@ Autonomy levels are `plan_only`, `read_only`, `workspace`, and `consequential`.
 
 ## MCP
 
-Prompt Refiner exposes prompt compilation and evaluation tools. Graph Engineer exposes planning, validation, execution, and runtime evaluation. The MCP execution surface never accepts human-gate approvals or reconciliation.
+Prompt Refiner exposes prompt compilation and evaluation tools. Graph Engineer
+exposes:
+
+- `plan_graph`
+- `validate_graph`
+- `run_graph` for short synchronous executions
+- `start_graph` for immediate background-job creation
+- `get_graph_run` for polling a background job
+- `evaluate_graph_runtime`
+
+Use `start_graph` and poll `get_graph_run` for multi-agent graphs or any run
+whose budget can approach the MCP client's request timeout. Jobs are retained in
+memory by the MCP server, with a default maximum of 16. Set
+`GRAPH_ENGINEER_MCP_MAX_JOBS` to an integer from 1 through 128 to change the
+bound. Completed jobs are evicted oldest-first when the bound is reached.
+
+The MCP execution surface never accepts human-gate approvals or reconciliation.
+Background jobs do not survive an MCP server restart, but their normal runtime
+audit and checkpoint files remain available for CLI inspection and resume.
 
 Start the servers:
 

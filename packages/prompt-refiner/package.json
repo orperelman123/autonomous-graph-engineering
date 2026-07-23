@@ -38,7 +38,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/compiler.test.ts test/mcp.test.ts test/server.test.ts",
+    "test": "tsx --test test/compiler.test.ts test/hook.test.ts test/mcp.test.ts test/provider.test.ts test/server.test.ts",
     "eval": "tsx src/cli.ts eval"
   },
   "engines": {

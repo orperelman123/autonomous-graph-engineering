@@ -53,7 +53,168 @@ test("MCP server initializes and lists all graph tools", async () => {
 
   assert.ok(responses.some((response) => response.id === 1));
   const listed = responses.find((response) => response.id === 2);
-  assert.equal(listed?.result?.tools?.length, 4);
+  assert.equal(listed?.result?.tools?.length, 6);
+});
+
+test("MCP starts and polls a graph without holding the request open", async () => {
+  const serverPath = fileURLToPath(
+    new URL("../src/mcp-server.ts", import.meta.url),
+  );
+  const child = spawn(process.execPath, ["--import", "tsx", serverPath], {
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  type RpcResponse = {
+    id?: number;
+    result?: {
+      structuredContent?: {
+        jobId?: string;
+        status?: string;
+        result?: { status?: string };
+      };
+    };
+    error?: { message?: string };
+  };
+  const responses: RpcResponse[] = [];
+  let buffered = "";
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => {
+    buffered += chunk;
+    const lines = buffered.split("\n");
+    buffered = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.trim()) responses.push(JSON.parse(line) as RpcResponse);
+    }
+  });
+  const send = (id: number, method: string, params?: unknown): void => {
+    child.stdin.write(
+      `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`,
+    );
+  };
+  const waitFor = async (id: number): Promise<RpcResponse> => {
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const response = responses.find((candidate) => candidate.id === id);
+      if (response) return response;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error(`MCP response ${id} timed out`);
+  };
+  const graph = {
+    version: "1.0",
+    id: "mcp-async-local",
+    goal: "Exercise asynchronous MCP graph execution.",
+    originalPromptHash: "test-hash",
+    autonomy: "read_only",
+    createdAt: new Date().toISOString(),
+    budgets: {
+      maxNodes: 1,
+      maxParallel: 1,
+      maxFanout: 1,
+      maxDepth: 1,
+      maxRepairRounds: 0,
+      timeoutMs: 5_000,
+      maxEstimatedTokens: 10_000,
+      maxActualTokens: 10_000,
+    },
+    nodes: [
+      {
+        id: "echo",
+        label: "Echo locally",
+        kind: "agent",
+        dependsOn: [],
+        permission: "read",
+        executor: "local",
+        prompt: "Return the input.",
+      },
+    ],
+    metadata: { routing: "direct", planner: "test" },
+  };
+
+  try {
+    send(1, "initialize", { protocolVersion: "2025-03-26" });
+    await waitFor(1);
+    send(2, "tools/call", {
+      name: "start_graph",
+      arguments: { graph },
+    });
+    const started = await waitFor(2);
+    assert.equal(started.error, undefined);
+    const jobId = started.result?.structuredContent?.jobId;
+    assert.ok(jobId);
+    assert.equal(started.result?.structuredContent?.status, "running");
+
+    let completed: RpcResponse | undefined;
+    for (let id = 3; id < 20; id += 1) {
+      send(id, "tools/call", {
+        name: "get_graph_run",
+        arguments: { jobId },
+      });
+      const polled = await waitFor(id);
+      if (polled.result?.structuredContent?.status !== "running") {
+        completed = polled;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(completed?.result?.structuredContent?.status, "completed");
+    assert.equal(
+      completed?.result?.structuredContent?.result?.status,
+      "completed",
+    );
+  } finally {
+    child.kill();
+  }
+});
+
+test("MCP tool errors preserve the originating request ID", async () => {
+  const serverPath = fileURLToPath(
+    new URL("../src/mcp-server.ts", import.meta.url),
+  );
+  const child = spawn(process.execPath, ["--import", "tsx", serverPath], {
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const response = await new Promise<{
+    id?: number;
+    error?: { code?: number; message?: string };
+  }>((resolve, reject) => {
+    let buffered = "";
+    const deadline = setTimeout(
+      () => reject(new Error("MCP error response timed out")),
+      5_000,
+    );
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      buffered += chunk;
+      const lines = buffered.split("\n");
+      buffered = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parsed = JSON.parse(line) as {
+          id?: number;
+          error?: { code?: number; message?: string };
+        };
+        if (parsed.id === 41) {
+          clearTimeout(deadline);
+          resolve(parsed);
+        }
+      }
+    });
+    child.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 41,
+        method: "tools/call",
+        params: {
+          name: "get_graph_run",
+          arguments: { jobId: "missing-job" },
+        },
+      })}\n`,
+    );
+  });
+  child.kill();
+  assert.equal(response.id, 41);
+  assert.equal(response.error?.code, -32603);
+  assert.match(response.error?.message ?? "", /unknown graph job/);
 });
 
 test("HTTP server plans and validates graphs on loopback", async () => {

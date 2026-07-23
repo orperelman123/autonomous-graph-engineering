@@ -2,8 +2,8 @@
 
 ## Current deterministic coverage
 
-- Prompt Refiner: 9 unit/interface tests and 24 evaluation cases
-- Graph Engineer: 39 unit/interface tests and 20 adversarial evaluation cases
+- Prompt Refiner: 19 unit/interface tests and 27 evaluation cases
+- Graph Engineer: 43 unit/interface tests and 20 adversarial evaluation cases
 - Repository semantic corpus: 2 cases
 - Strict TypeScript compilation
 - Package dry-run checks, link validation, and secret scanning in CI
@@ -21,7 +21,7 @@ npm run link-check
 The suites exercise:
 
 - exact prompt preservation and permission non-escalation;
-- secret redaction and destructive-action classification;
+- secret redaction, JSON-string prompt boundaries, and consequential-action classification;
 - direct versus graph routing;
 - malformed contracts, cycles, and missing dependencies;
 - autonomy, gate, concurrency, depth, fan-out, token, timeout, output, and repair budgets;
@@ -30,7 +30,7 @@ The suites exercise:
 - process-tree termination;
 - repair-state and audit consistency;
 - graph-bound approvals;
-- atomic checkpoint resume and tamper rejection;
+- atomic checkpoint resume, gate re-approval, and tamper rejection;
 - actual Codex and Claude usage parsing;
 - artifact grading and semantic expectations;
 - reconciliation token rejection, retry, verified completion, and no replay;

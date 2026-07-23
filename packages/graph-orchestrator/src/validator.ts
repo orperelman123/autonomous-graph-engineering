@@ -217,6 +217,17 @@ function graphShapeIssues(value: unknown): ValidationIssue[] {
         message: "maxActualTokens must be a positive finite integer",
       });
     }
+    if (
+      typeof budgets.maxParallel === "number" &&
+      Number.isFinite(budgets.maxParallel) &&
+      Number.isInteger(budgets.maxParallel) &&
+      (budgets.maxParallel < 1 || budgets.maxParallel > 100)
+    ) {
+      issues.push({
+        code: "INVALID_PARALLEL_BUDGET",
+        message: "maxParallel must be an integer between 1 and 100",
+      });
+    }
   }
   if (!Array.isArray(graph.nodes)) {
     issues.push({ code: "INVALID_NODES", message: "nodes must be an array" });

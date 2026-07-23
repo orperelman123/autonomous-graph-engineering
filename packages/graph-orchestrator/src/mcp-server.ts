@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import {
   ClaudeCliExecutor,
@@ -8,7 +9,11 @@ import {
 import { runGraphEvaluation } from "./evaluation.js";
 import { planGraph } from "./planner.js";
 import { runGraph } from "./runtime.js";
-import type { GraphSpec, PlanGraphRequest } from "./types.js";
+import type {
+  GraphRunResult,
+  GraphSpec,
+  PlanGraphRequest,
+} from "./types.js";
 import { validateGraph } from "./validator.js";
 
 type Request = {
@@ -17,6 +22,91 @@ type Request = {
   method: string;
   params?: Record<string, unknown>;
 };
+
+type GraphJob = {
+  jobId: string;
+  graphId: string;
+  status: "running" | "completed" | "failed";
+  startedAt: string;
+  completedAt?: string;
+  result?: GraphRunResult;
+  error?: string;
+};
+
+const jobs = new Map<string, GraphJob>();
+
+function jobLimit(): number {
+  const configured = Number(process.env.GRAPH_ENGINEER_MCP_MAX_JOBS ?? 16);
+  return Number.isInteger(configured) && configured >= 1 && configured <= 128
+    ? configured
+    : 16;
+}
+
+function makeExecutors() {
+  return {
+    codex: new CodexCliExecutor(),
+    claude: new ClaudeCliExecutor(),
+    local: new LocalEchoExecutor(),
+  };
+}
+
+function pruneCompletedJobs(): void {
+  const completed = [...jobs.values()]
+    .filter((job) => job.status !== "running")
+    .sort((left, right) =>
+      (left.completedAt ?? left.startedAt).localeCompare(
+        right.completedAt ?? right.startedAt,
+      ),
+    );
+  while (jobs.size >= jobLimit() && completed.length > 0) {
+    const oldest = completed.shift();
+    if (oldest) jobs.delete(oldest.jobId);
+  }
+  if (jobs.size >= jobLimit()) {
+    throw new Error(
+      `MCP graph job limit reached (${jobLimit()} running jobs)`,
+    );
+  }
+}
+
+function startGraphJob(graph: GraphSpec): GraphJob {
+  const validation = validateGraph(graph);
+  if (!validation.valid) {
+    throw new Error(
+      `graph validation failed: ${validation.errors
+        .map((error) => `${error.code}: ${error.message}`)
+        .join("; ")}`,
+    );
+  }
+  pruneCompletedJobs();
+  const job: GraphJob = {
+    jobId: randomUUID(),
+    graphId: graph.id,
+    status: "running",
+    startedAt: new Date().toISOString(),
+  };
+  jobs.set(job.jobId, job);
+  void runGraph(graph, {
+    executors: makeExecutors(),
+    approvals: [],
+  }).then(
+    (result) => {
+      job.status = "completed";
+      job.result = result;
+      job.completedAt = new Date().toISOString();
+    },
+    (error) => {
+      job.status = "failed";
+      job.error = error instanceof Error ? error.message : String(error);
+      job.completedAt = new Date().toISOString();
+    },
+  );
+  return job;
+}
+
+function publicJob(job: GraphJob): GraphJob {
+  return { ...job };
+}
 
 function send(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -64,12 +154,38 @@ const tools = [
   {
     name: "run_graph",
     description:
-      "Execute a validated graph. This MCP surface never approves human gates; consequential runs return needs_confirmation for a human to continue through the CLI.",
+      "Execute a validated short graph synchronously. Prefer start_graph and get_graph_run when execution may approach the MCP client timeout. This MCP surface never approves human gates.",
     inputSchema: {
       type: "object",
       required: ["graph"],
       properties: {
         graph: { type: "object" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "start_graph",
+    description:
+      "Start a validated graph in the background and immediately return a job ID for polling. Use this for multi-agent or potentially long-running graphs.",
+    inputSchema: {
+      type: "object",
+      required: ["graph"],
+      properties: {
+        graph: { type: "object" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_graph_run",
+    description:
+      "Read the status and eventual result of a graph job created by start_graph.",
+    inputSchema: {
+      type: "object",
+      required: ["jobId"],
+      properties: {
+        jobId: { type: "string", minLength: 1 },
       },
       additionalProperties: false,
     },
@@ -121,13 +237,16 @@ async function handle(request: Request): Promise<void> {
     output = validateGraph(args.graph as GraphSpec);
   } else if (name === "run_graph") {
     output = await runGraph(args.graph as GraphSpec, {
-      executors: {
-        codex: new CodexCliExecutor(),
-        claude: new ClaudeCliExecutor(),
-        local: new LocalEchoExecutor(),
-      },
+      executors: makeExecutors(),
       approvals: [],
     });
+  } else if (name === "start_graph") {
+    output = publicJob(startGraphJob(args.graph as GraphSpec));
+  } else if (name === "get_graph_run") {
+    const jobId = args.jobId as string;
+    const job = jobs.get(jobId);
+    if (!job) throw new Error(`unknown graph job: ${jobId}`);
+    output = publicJob(job);
   } else if (name === "evaluate_graph_runtime") {
     output = await runGraphEvaluation();
   } else {
@@ -144,10 +263,17 @@ const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
 lines.on("line", (line) => {
   if (!line.trim()) return;
   void (async () => {
+    let request: Request;
     try {
-      await handle(JSON.parse(line) as Request);
+      request = JSON.parse(line) as Request;
     } catch (error) {
       fail(null, -32700, (error as Error).message);
+      return;
+    }
+    try {
+      await handle(request);
+    } catch (error) {
+      fail(request.id, -32603, (error as Error).message);
     }
   })();
 });

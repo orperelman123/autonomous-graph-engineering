@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { collectContext } from "./context.js";
+import { buildHookResponse } from "./hook.js";
 import { refinePrompt } from "./provider.js";
 import type { RefineRequest } from "./types.js";
 
@@ -22,16 +23,6 @@ function json(response: ServerResponse, status: number, body: unknown): void {
     "cache-control": "no-store",
   });
   response.end(JSON.stringify(body));
-}
-
-function hookResponse(eventName: string, effectivePrompt: string): unknown {
-  return {
-    continue: true,
-    hookSpecificOutput: {
-      hookEventName: eventName,
-      additionalContext: effectivePrompt,
-    },
-  };
 }
 
 export function startServer(options: {
@@ -70,6 +61,10 @@ export function startServer(options: {
           json(response, 400, { error: "hook payload must contain prompt" });
           return;
         }
+        if (prompt.trimStart().startsWith("!raw")) {
+          json(response, 200, { continue: true });
+          return;
+        }
         const result = await refinePrompt({
           prompt,
           mode: "auto",
@@ -81,11 +76,11 @@ export function startServer(options: {
         json(
           response,
           200,
-          hookResponse(
+          buildHookResponse(
             typeof body.hook_event_name === "string"
               ? body.hook_event_name
               : "UserPromptSubmit",
-            result.effectivePrompt,
+            result,
           ),
         );
         return;

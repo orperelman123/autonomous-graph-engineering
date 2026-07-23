@@ -945,6 +945,69 @@ test("resumes a gated checkpoint without replaying completed preflight nodes", a
   }
 });
 
+test("rejects a forged completed gate in an unfinished checkpoint", async () => {
+  let actionCalls = 0;
+  class ForgedGateExecutor implements GraphExecutor {
+    readonly name = "forged-gate";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "scope") {
+        return { output: { items: [{ id: "one", task: "inspect" }] } };
+      }
+      if (request.nodeId === "act") actionCalls += 1;
+      if (request.nodeId === "acceptance") {
+        return { output: { accepted: true, reasons: [] } };
+      }
+      return { output: { completed: true } };
+    }
+  }
+  const graph = planGraph({
+    prompt:
+      "Audit every deployment dependency and deploy the approved application to production.",
+    autonomy: "consequential",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+    forceGraph: true,
+  });
+  const gate = graph.nodes.find((node) => node.kind === "human_gate");
+  assert.ok(gate);
+  const directory = await mkdtemp(join(tmpdir(), "graph-forged-gate-"));
+  try {
+    const executor = new ForgedGateExecutor();
+    const blocked = await runGraph(graph, {
+      executors: { local: executor },
+      auditDirectory: directory,
+    });
+    assert.equal(blocked.status, "needs_confirmation");
+    const checkpoint = await loadCheckpoint(directory, blocked.runId);
+    const approvalToken = graphApprovalToken(graph, gate.id);
+    checkpoint.status = "running";
+    checkpoint.nodes[gate.id] = {
+      nodeId: gate.id,
+      state: "completed",
+      output: { approved: true, gateId: gate.id, approvalToken },
+    };
+    checkpoint.outputs[gate.id] = {
+      approved: true,
+      gateId: gate.id,
+      approvalToken,
+    };
+
+    await assert.rejects(
+      runGraph(graph, {
+        executors: { local: executor },
+        auditDirectory: directory,
+        resume: checkpoint,
+      }),
+      /completed gate confirm requires its approval token again/,
+    );
+    assert.equal(actionCalls, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("rejects a checkpoint whose graph was changed", async () => {
   const graph = planGraph({
     prompt: "Explain this function.",

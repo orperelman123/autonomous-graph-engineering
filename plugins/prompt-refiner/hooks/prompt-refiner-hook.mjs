@@ -1,4 +1,9 @@
-import { collectContext, refinePrompt } from "../runtime/index.js";
+import {
+  buildHookFailureResponse,
+  buildHookResponse,
+  collectContext,
+  refinePrompt,
+} from "../runtime/index.js";
 
 const chunks = [];
 for await (const chunk of process.stdin) {
@@ -24,28 +29,16 @@ try {
     semantic: process.env.PROMPT_REFINER_SEMANTIC === "true",
   });
 
-  if (result.status === "pass_through") {
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-
   process.stdout.write(
-    JSON.stringify({
-      continue: true,
-      hookSpecificOutput: {
-        hookEventName:
-          typeof input.hook_event_name === "string"
-            ? input.hook_event_name
-            : "UserPromptSubmit",
-        additionalContext: result.effectivePrompt,
-      },
-    }),
+    JSON.stringify(
+      buildHookResponse(
+        typeof input.hook_event_name === "string"
+          ? input.hook_event_name
+          : "UserPromptSubmit",
+        result,
+      ),
+    ),
   );
-} catch (error) {
-  process.stdout.write(
-    JSON.stringify({
-      continue: true,
-      systemMessage: `Prompt Refiner failed safely; the original prompt will continue unchanged: ${error.message}`,
-    }),
-  );
+} catch {
+  process.stdout.write(JSON.stringify(buildHookFailureResponse()));
 }

@@ -30,6 +30,8 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Approval tokens bind the full graph fingerprint.
 - MCP cannot supply approvals.
 - HTTP approval requires an API key plus `GRAPH_ENGINEER_ALLOW_HTTP_APPROVALS=1`.
+- An unfinished checkpoint cannot carry a completed human gate across resume
+  unless the trusted caller supplies the exact graph-bound approval again.
 
 ### Execution isolation
 

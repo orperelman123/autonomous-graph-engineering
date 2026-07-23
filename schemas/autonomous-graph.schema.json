@@ -18,7 +18,7 @@
       "required": ["maxNodes", "maxParallel", "maxFanout", "maxDepth", "maxRepairRounds", "timeoutMs", "maxEstimatedTokens"],
       "properties": {
         "maxNodes": { "type": "integer", "minimum": 1 },
-        "maxParallel": { "type": "integer", "minimum": 1 },
+        "maxParallel": { "type": "integer", "minimum": 1, "maximum": 100 },
         "maxFanout": { "type": "integer", "minimum": 1 },
         "maxDepth": { "type": "integer", "minimum": 1 },
         "maxRepairRounds": { "type": "integer", "minimum": 0, "maximum": 5 },

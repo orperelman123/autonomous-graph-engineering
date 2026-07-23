@@ -101,6 +101,21 @@ test("rejects malformed budgets and unknown graph enums", () => {
   assert.ok(result.errors.some((issue) => issue.code === "INVALID_AUTONOMY"));
 });
 
+test("rejects maxParallel values that could stall or overload the scheduler", () => {
+  for (const maxParallel of [0, -1, 101]) {
+    const graph = planGraph({ prompt: "Explain this function." });
+    graph.budgets.maxParallel = maxParallel;
+
+    const result = validateGraph(graph);
+    assert.equal(result.valid, false);
+    assert.ok(
+      result.errors.some(
+        (issue) => issue.code === "INVALID_PARALLEL_BUDGET",
+      ),
+    );
+  }
+});
+
 test("rejects unsupported node fields and malformed repair policies", () => {
   const graph = planGraph({ prompt: "Explain this function." }) as unknown as {
     nodes: Array<Record<string, unknown>>;

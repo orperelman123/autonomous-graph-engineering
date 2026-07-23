@@ -37,4 +37,40 @@ test("HTTP refinement and hook endpoints return structured results", async (t) =
     hook.hookSpecificOutput?.additionalContext ?? "",
     /EXECUTION BRIEF/,
   );
+
+  for (const [prompt, reason] of [
+    ["Send this", /target|destination/i],
+    [
+      "Delete the temporary file after verifying its path.",
+      /confirmation|required|confirm/i,
+    ],
+  ] as const) {
+    const blockedResponse = await fetch(`${base}/hooks/claude`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        hook_event_name: "UserPromptSubmit",
+        prompt,
+        cwd: process.cwd(),
+      }),
+    });
+    assert.equal(blockedResponse.status, 200);
+    const blocked = (await blockedResponse.json()) as {
+      decision?: string;
+      reason?: string;
+    };
+    assert.equal(blocked.decision, "block");
+    assert.match(blocked.reason ?? "", reason);
+  }
+
+  const rawResponse = await fetch(`${base}/hooks/claude`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "!raw Delete the temporary file.",
+      cwd: process.cwd(),
+    }),
+  });
+  assert.deepEqual(await rawResponse.json(), { continue: true });
 });

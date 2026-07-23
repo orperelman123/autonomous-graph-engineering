@@ -62,7 +62,7 @@ Acceptance verifiers return a locally schema-validated `{accepted, reasons}` res
 
 ### Gates and reconciliation
 
-Approval tokens bind graph ID, graph fingerprint, and gate ID. Editing a graph invalidates approval.
+Approval tokens bind graph ID, graph fingerprint, and gate ID. Editing a graph invalidates approval. Resuming an unfinished checkpoint that already records a completed gate requires the caller to supply that gate's approval token again; checkpoint state alone is not treated as fresh approval.
 
 When a side-effecting process ends ambiguously:
 

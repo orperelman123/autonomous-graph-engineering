@@ -468,6 +468,26 @@ export async function runGraph(
       throw new Error("checkpoint graph fingerprint mismatch");
     }
     const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+    if (resume.status !== "completed") {
+      for (const [nodeId, state] of Object.entries(resume.nodes)) {
+        const node = byId.get(nodeId);
+        if (node?.kind !== "human_gate" || state.state !== "completed") continue;
+        const approvalToken = graphApprovalToken(graph, nodeId);
+        const expectedOutput = {
+          approved: true,
+          gateId: nodeId,
+          approvalToken,
+        };
+        if (
+          !(options.approvals ?? []).includes(approvalToken) ||
+          stableKey(resume.outputs[nodeId]) !== stableKey(expectedOutput)
+        ) {
+          throw new Error(
+            `completed gate ${nodeId} requires its approval token again when resuming`,
+          );
+        }
+      }
+    }
     const uncertain = Object.values(resume.nodes).find((state) => {
       const permission = byId.get(state.nodeId)?.permission;
       return (

@@ -116,7 +116,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 39 unit and interface tests, 20 adversarial graph cases, 24 prompt-refinement evaluations, and a two-case repository semantic corpus. See [Evaluation](docs/evaluation.md) for what those checks prove—and what they do not.
+The current suite contains 62 unit and interface tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. See [Evaluation](docs/evaluation.md) for what those checks prove—and what they do not.
 
 ## Contributing
 
