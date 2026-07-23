@@ -39,7 +39,6 @@ export interface GraphBudgets {
   maxEstimatedTokens: number;
   maxActualTokens?: number;
 }
-
 export interface GraphNode {
   id: string;
   label: string;

@@ -41,7 +41,6 @@ function complexityScore(prompt: string): number {
   if (/\b(then|after|before|depends on|based on)\b/i.test(prompt)) score += 1;
   return Math.min(score, 10);
 }
-
 function permissionFor(
   autonomy: AutonomyLevel,
   classification: string,
