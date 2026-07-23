@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "id": "package-metadata-direct",
     "prompt": "Read package.json only. Report the package name and Node engine requirement with concise evidence. Do not modify files.",
@@ -28,4 +28,3 @@
     ]
   }
 ]
-
