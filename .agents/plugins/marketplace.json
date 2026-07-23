@@ -1,0 +1,20 @@
+{
+  "name": "autonomous-graph-engineering",
+  "interface": {
+    "displayName": "Autonomous Graph Engineering"
+  },
+  "plugins": [
+    {
+      "name": "prompt-refiner",
+      "source": {
+        "source": "local",
+        "path": "./plugins/prompt-refiner"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "prompt-refiner",
+  "version": "0.1.0",
+  "description": "Improve requests and execute complex work as validated, permission-safe autonomous graphs.",
+  "author": {
+    "name": "Autonomous Graph Engineering contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Prompt Refiner",
+    "shortDescription": "Refine prompts and run safe agent graphs.",
+    "longDescription": "Prompt Refiner preserves the original request, then Graph Engineer decomposes complex work, runs independent nodes, verifies outputs, caps repair, and gates consequential actions.",
+    "developerName": "Autonomous Graph Engineering contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Improve this prompt without changing my intent.",
+      "Turn this request into a verified execution brief.",
+      "Evaluate the prompt refiner for safety and quality.",
+      "Plan and run this complex task as a verified autonomous graph."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

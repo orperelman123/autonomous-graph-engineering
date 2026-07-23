@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/schemas/prompt-refinement.schema.json",
+  "title": "Prompt refinement result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "originalPrompt",
+    "originalPromptHash",
+    "status",
+    "classification",
+    "risk",
+    "confidence",
+    "brief",
+    "warnings",
+    "effectivePrompt",
+    "provider",
+    "createdAt"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "originalPrompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000
+    },
+    "originalPromptHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "pass_through",
+        "clarification_needed",
+        "confirmation_required"
+      ]
+    },
+    "classification": {
+      "enum": [
+        "conversation",
+        "explanation",
+        "implementation",
+        "investigation",
+        "external_action",
+        "destructive_action",
+        "other"
+      ]
+    },
+    "risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objective",
+        "context",
+        "requirements",
+        "constraints",
+        "acceptanceCriteria",
+        "verification",
+        "assumptions",
+        "permissionsRequired"
+      ],
+      "properties": {
+        "objective": {
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "requirements": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "constraints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "acceptanceCriteria": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "verification": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "assumptions": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "permissionsRequired": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "destructive_change",
+              "external_side_effect",
+              "elevated_access"
+            ]
+          }
+        }
+      }
+    },
+    "clarificationQuestion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confirmationReason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "warnings": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "effectivePrompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "enum": [
+        "deterministic",
+        "openai",
+        "anthropic"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

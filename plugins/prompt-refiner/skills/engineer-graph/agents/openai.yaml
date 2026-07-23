@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineer Graph"
+  short_description: "Plan and run bounded autonomous graphs"
+  default_prompt: "Use $engineer-graph to plan and execute this complex task as a safe autonomous graph."

@@ -1,0 +1,18 @@
+{
+  "description": "Add a safe execution brief to each substantive user prompt.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT/hooks/prompt-refiner-hook.mjs\"",
+            "commandWindows": "node \"%CLAUDE_PLUGIN_ROOT%\\hooks\\prompt-refiner-hook.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Improving prompt"
+          }
+        ]
+      }
+    ]
+  }
+}

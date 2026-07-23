@@ -1,0 +1,8 @@
+{
+  "name": "prompt-refiner",
+  "version": "0.1.0",
+  "description": "Improve prompts without changing intent or expanding permissions.",
+  "author": {
+    "name": "Autonomous Graph Engineering contributors"
+  }
+}

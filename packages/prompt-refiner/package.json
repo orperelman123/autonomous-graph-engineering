@@ -1,0 +1,51 @@
+﻿{
+  "name": "@autonomous-graph-engineering/prompt-refiner",
+  "version": "0.1.0",
+  "description": "Intent-preserving prompt refinement and execution briefs for agent workflows.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orperelman123/autonomous-graph-engineering.git",
+    "directory": "packages/prompt-refiner"
+  },
+  "homepage": "https://github.com/orperelman123/autonomous-graph-engineering#readme",
+  "bugs": "https://github.com/orperelman123/autonomous-graph-engineering/issues",
+  "keywords": [
+    "agents",
+    "prompt-engineering",
+    "codex",
+    "claude",
+    "mcp",
+    "safety"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "prompt-refiner": "./dist/cli.js",
+    "codex-better": "./dist/codex-better.js",
+    "claude-better": "./dist/claude-better.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "eval": "tsx src/cli.ts eval"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
+

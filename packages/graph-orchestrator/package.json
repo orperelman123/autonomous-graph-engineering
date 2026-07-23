@@ -1,0 +1,52 @@
+﻿{
+  "name": "@autonomous-graph-engineering/graph-engineer",
+  "version": "0.1.0",
+  "description": "Permission-safe autonomous graph orchestration for Codex and Claude Code.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orperelman123/autonomous-graph-engineering.git",
+    "directory": "packages/graph-orchestrator"
+  },
+  "homepage": "https://github.com/orperelman123/autonomous-graph-engineering#readme",
+  "bugs": "https://github.com/orperelman123/autonomous-graph-engineering/issues",
+  "keywords": [
+    "agents",
+    "graph-orchestration",
+    "codex",
+    "claude",
+    "mcp",
+    "human-in-the-loop"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "graph-engineer": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "eval": "tsx src/cli.ts eval"
+  },
+  "dependencies": {
+    "@autonomous-graph-engineering/prompt-refiner": "0.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
+

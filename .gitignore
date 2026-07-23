@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.graph-runs/
+.env
+.env.*
+!.env.example
+*.log
+*.tgz
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+coverage/
+tmp/
+temp/

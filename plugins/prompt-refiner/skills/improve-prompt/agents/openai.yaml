@@ -1,0 +1,4 @@
+interface:
+  display_name: "Improve Prompt"
+  short_description: "Turn requests into safe execution briefs"
+  default_prompt: "Use $improve-prompt to refine this request before acting."

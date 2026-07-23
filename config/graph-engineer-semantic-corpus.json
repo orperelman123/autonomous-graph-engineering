@@ -1,0 +1,31 @@
+﻿[
+  {
+    "id": "package-metadata-direct",
+    "prompt": "Read package.json only. Report the package name and Node engine requirement with concise evidence. Do not modify files.",
+    "forceGraph": false,
+    "expectedAll": [
+      "autonomous-graph-engineering",
+      ">=20"
+    ],
+    "forbiddenAny": [
+      "package name: unknown",
+      "node requirement: unknown"
+    ]
+  },
+  {
+    "id": "graph-safety-invariants",
+    "prompt": "Inspect only packages/graph-orchestrator/src/planner.ts and packages/graph-orchestrator/src/runtime.ts. Create exactly two work items, one per file. Identify one safety invariant implemented by each file with exact symbol evidence. Do not modify files.",
+    "forceGraph": true,
+    "expectedAll": [
+      "permissionFor",
+      "human_gate",
+      "graphApprovalToken",
+      "HumanGateRequired"
+    ],
+    "forbiddenAny": [
+      "no safety invariant",
+      "could not inspect"
+    ]
+  }
+]
+
