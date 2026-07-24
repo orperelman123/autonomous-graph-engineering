@@ -77,7 +77,7 @@ The package, npm account with two-factor authentication, and publisher
 relationship must already exist before the equivalent npm CLI trust command
 can be used. In GitHub, create an `npm` environment with required reviewers and
 deployment restrictions. Once both package relationships exist, dispatch
-`Publish npm` with an already verified tag such as `v0.3.2`. Do not dispatch it
+`Publish npm` with an already verified tag such as `v0.3.3`. Do not dispatch it
 for a version whose source tag has not passed the complete release gates.
 
 Authoritative references: [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/),

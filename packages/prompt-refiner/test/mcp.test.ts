@@ -78,6 +78,10 @@ test("MCP server initializes and exposes refinement tools", async () => {
   assert.equal(responses[1]?.id, 2);
   assert.deepEqual(
     responses[1]?.result?.tools?.map((tool) => tool.name),
-    ["refine_prompt", "evaluate_prompt_refiner"],
+    [
+      "refine_prompt",
+      "get_runtime_info",
+      "evaluate_prompt_refiner",
+    ],
   );
 });

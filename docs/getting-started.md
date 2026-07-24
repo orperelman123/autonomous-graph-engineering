@@ -79,6 +79,11 @@ npm run install:local
 npm run verify:install
 ```
 
+Reload the host after installation, then call `get_runtime_info` on both MCP
+servers. Continue only when each reports `status: "current"`. This distinguishes
+a correctly installed bundle from a host process that still has the previous
+runtime loaded.
+
 Build the native source bundle for another supported host:
 
 ```bash

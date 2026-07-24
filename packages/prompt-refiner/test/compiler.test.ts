@@ -94,19 +94,60 @@ test("classifies common consequential command and GitHub action forms", () => {
 });
 
 test("does not request consequential permission for explicitly negated actions", () => {
-  for (const prompt of [
-    "Review the branch but do not force push",
-    "Explain how to purge a cache without purging anything",
-  ]) {
+  const cases = [
+    ["Review the branch but do not force push", "investigation"],
+    ["Explain how to purge a cache without purging anything", "explanation"],
+    [
+      "Fix the local adapter. Do not commit, push, merge, publish packages, create releases, submit marketplaces, or promote externally.",
+      "implementation",
+    ],
+    [
+      "Audit the repository without deleting files, pushing branches, or opening pull requests.",
+      "investigation",
+    ],
+    [
+      "Improve the parser; never deploy, publish, merge, push, or release anything.",
+      "implementation",
+    ],
+    [
+      "Inspect the service. Do not use sudo, root access, or elevated permissions.",
+      "investigation",
+    ],
+    [
+      "Without deploying or publishing anything, build the local adapter and run its tests.",
+      "implementation",
+    ],
+  ] as const;
+  for (const [prompt, classification] of cases) {
     const result = compilePrompt({ prompt });
     assert.equal(result.status, "ready", prompt);
+    assert.equal(result.classification, classification, prompt);
     assert.deepEqual(result.brief.permissionsRequired, [], prompt);
   }
 });
 
+test("ends negation scope at an explicit positive contrast", () => {
+  const external = compilePrompt({
+    prompt:
+      "Do not publish packages or create releases, but open a pull request for the reviewed branch.",
+  });
+  assert.equal(external.classification, "external_action");
+  assert.equal(external.status, "confirmation_required");
+  assert.deepEqual(external.brief.permissionsRequired, [
+    "external_side_effect",
+  ]);
+
+  const destructive = compilePrompt({
+    prompt:
+      "Never delete production data. Delete the named temporary file after verifying its path.",
+  });
+  assert.equal(destructive.classification, "destructive_action");
+  assert.equal(destructive.status, "confirmation_required");
+});
+
 test("built-in evaluation suite passes", () => {
   const report = runEvaluation();
-  assert.equal(report.total, 27);
+  assert.equal(report.total, 30);
   assert.equal(report.failed, 0, JSON.stringify(report, null, 2));
   assert.equal(report.passRate, 1);
 });

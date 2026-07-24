@@ -14,15 +14,30 @@ if (basename(pluginTarget) !== "prompt-refiner") {
   throw new Error("plugin target must end in prompt-refiner");
 }
 const expectAtbash = process.argv.includes("--expect-atbash");
+const manifest = JSON.parse(
+  await readFile(join(pluginTarget, "install-manifest.json"), "utf8"),
+);
+if (
+  manifest?.schemaVersion !== "1.0" ||
+  typeof manifest.installId !== "string" ||
+  typeof manifest.components?.promptRefiner !== "string" ||
+  typeof manifest.components?.graphEngineer !== "string"
+) {
+  throw new Error("installed GraphVigil manifest is invalid");
+}
 
 const configuration = JSON.parse(
   await readFile(join(pluginTarget, ".mcp.json"), "utf8"),
 );
 const expected = new Map([
-  ["prompt-refiner", ["refine_prompt", "evaluate_prompt_refiner"]],
+  [
+    "prompt-refiner",
+    ["refine_prompt", "get_runtime_info", "evaluate_prompt_refiner"],
+  ],
   [
     "graph-engineer",
     [
+      "get_runtime_info",
       "plan_graph",
       "validate_graph",
       "run_graph",
@@ -76,12 +91,26 @@ async function listTools(name, server) {
       params: {},
     })}\n`,
   );
+  child.stdin.write(
+    `${JSON.stringify({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "get_runtime_info", arguments: {} },
+    })}\n`,
+  );
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
+    const initialized = responses.find((response) => response.id === 1);
     const listed = responses.find((response) => response.id === 2);
-    if (listed) {
+    const runtime = responses.find((response) => response.id === 3);
+    if (initialized && listed && runtime) {
       child.kill();
-      return listed.result?.tools?.map((tool) => tool.name) ?? [];
+      return {
+        serverInfo: initialized.result?.serverInfo,
+        tools: listed.result?.tools?.map((tool) => tool.name) ?? [],
+        runtimeInfo: runtime.result?.structuredContent,
+      };
     }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
   }
@@ -91,14 +120,33 @@ async function listTools(name, server) {
 
 for (const [name, expectedTools] of expected) {
   const server = configuration.mcpServers?.[name];
-  const actualTools = await listTools(name, server);
+  const { serverInfo, tools: actualTools, runtimeInfo } = await listTools(
+    name,
+    server,
+  );
   if (JSON.stringify(actualTools) !== JSON.stringify(expectedTools)) {
     throw new Error(
       `${name} tools mismatch: expected ${expectedTools.join(", ")}, received ${actualTools.join(", ")}`,
     );
   }
+  const expectedVersion =
+    name === "prompt-refiner"
+      ? manifest.components.promptRefiner
+      : manifest.components.graphEngineer;
+  if (
+    serverInfo?.version !== expectedVersion ||
+    runtimeInfo?.version !== expectedVersion ||
+    runtimeInfo?.status !== "current" ||
+    runtimeInfo?.reloadRequired !== false ||
+    runtimeInfo?.bootInstallId !== manifest.installId ||
+    runtimeInfo?.activeInstallId !== manifest.installId
+  ) {
+    throw new Error(
+      `${name} runtime identity mismatch; reinstall and reload the host`,
+    );
+  }
   process.stdout.write(
-    `${name}: verified ${actualTools.length} tools at ${server.args[0]}\n`,
+    `${name}: verified ${actualTools.length} tools and current runtime ${expectedVersion} at ${server.args[0]}\n`,
   );
 }
 

@@ -32,8 +32,13 @@ The installer:
 4. generates that installed plugin's `.mcp.json` with absolute runtime paths.
 
 Activation is transactional: the bundle is staged, atomically swapped, and
-verified. If post-activation verification fails, the previous bundle is
-restored. An atomic lock prevents concurrent installers from interleaving.
+both installed MCP servers are launched and identity-checked before the
+previous bundle is removed. If post-activation verification fails, the previous
+bundle is restored. An atomic lock prevents concurrent installers from
+interleaving.
+Each activation writes a non-secret installation identity shared by both MCP
+servers. A process that was already running can compare its boot identity with
+the active manifest and report that a reload is required.
 Global npm package installation happens before bundle activation and is not one
 transaction with the bundle; if npm itself fails, rerun after correcting npm.
 
@@ -170,6 +175,26 @@ copilot plugin install ~/.copilot/plugins/local/prompt-refiner
 copilot plugin list
 ```
 
+`npm run verify:install` launches fresh copies of both installed MCP servers and
+requires their versions, installation identities, tool lists, and runtime
+status to match the active manifest.
+
+After every install or upgrade:
+
+1. reload the host: restart Codex or open a new task, restart the Claude Code or
+   Copilot CLI session, or reload the Cursor window;
+2. ask both `prompt-refiner` and `graph-engineer` to call
+   `get_runtime_info`;
+3. require `status: "current"` and `reloadRequired: false`.
+
+If either server reports `reload_required`, the installation succeeded but that
+host is still using its previous in-memory process. Finish or checkpoint active
+work, reload the host, and check again. `invalid_manifest` is fail-closed:
+rerun the transactional installer and verification before executing a graph.
+If `get_runtime_info` is not listed at all after upgrading from an earlier
+version, the host is necessarily still running the older MCP process and must
+reload.
+
 The plugin's `userPromptTransformed` hook runs the deterministic compiler before
 execution and returns `modifiedTransformedPrompt`. It fails closed into a
 clarification or confirmation request when required and honors `!raw`. The
@@ -222,7 +247,9 @@ claude plugin marketplace update autonomous-graph-engineering
 claude plugin update prompt-refiner@autonomous-graph-engineering
 ```
 
-Re-register an MCP server only if its installed path or name changes.
+Re-register an MCP server only if its installed path or name changes. A normal
+upgrade still requires a host reload, which `get_runtime_info` verifies without
+guessing from the files on disk.
 
 For Cursor or Copilot, rerun the corresponding installer so activation remains
 rollback-safe:

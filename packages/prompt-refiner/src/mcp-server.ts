@@ -3,6 +3,8 @@ import { createInterface } from "node:readline";
 import { collectContext } from "./context.js";
 import { refinePrompt } from "./provider.js";
 import { runEvaluation } from "./evaluation.js";
+import { getRuntimeInfo } from "./runtime-info.js";
+import { PROMPT_REFINER_VERSION } from "./version.js";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -47,6 +49,16 @@ const TOOLS = [
     },
   },
   {
+    name: "get_runtime_info",
+    description:
+      "Report the active GraphVigil installation identity and whether this host must reload after an upgrade.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "evaluate_prompt_refiner",
     description:
       "Run the built-in deterministic safety and intent-preservation evaluation suite.",
@@ -65,7 +77,10 @@ async function handle(request: JsonRpcRequest): Promise<void> {
         (request.params?.protocolVersion as string | undefined) ??
         "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "prompt-refiner", version: "0.3.2" },
+      serverInfo: {
+        name: "prompt-refiner",
+        version: PROMPT_REFINER_VERSION,
+      },
       instructions:
         "Use refine_prompt before substantive work. Preserve the original request and never expand permissions.",
     });
@@ -117,6 +132,20 @@ async function handle(request: JsonRpcRequest): Promise<void> {
         ],
         structuredContent: report,
         isError: report.failed > 0,
+      });
+      return;
+    }
+    if (name === "get_runtime_info") {
+      const runtimeInfo = await getRuntimeInfo(
+        "prompt-refiner",
+        PROMPT_REFINER_VERSION,
+      );
+      result(request.id, {
+        content: [
+          { type: "text", text: JSON.stringify(runtimeInfo, null, 2) },
+        ],
+        structuredContent: runtimeInfo,
+        isError: runtimeInfo.reloadRequired,
       });
       return;
     }

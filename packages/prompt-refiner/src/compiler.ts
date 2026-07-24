@@ -17,7 +17,7 @@ const DESTRUCTIVE =
 const EXTERNAL =
   /\b(send|email|message|post|publish|deploy|purchase|buy|book|schedule|merge|push|release)\b|(?:שלח|פרסם|העלה|רכוש|קנה|קבע|מזג)/i;
 const IMPLEMENT =
-  /\b(build|create|implement|add|write|develop|integrate|refactor|fix|change|update)\b|(?:בנה|צור|הוסף|כתוב|פתח|שלב|תקן|שנה|עדכן)/i;
+  /\b(build|create|implement|add|write|develop|integrate|refactor|fix|change|update|improve)\b|(?:בנה|צור|הוסף|כתוב|פתח|שלב|תקן|שנה|עדכן)/i;
 const INVESTIGATE =
   /\b(debug|diagnose|investigate|inspect|audit|review|analy[sz]e|research|find)\b|(?:בדוק|אבחן|חקור|נתח|סקור|מצא)/i;
 const EXPLAIN =
@@ -31,19 +31,19 @@ const ADDITIONAL_EXTERNAL =
 function actionableText(prompt: string): string {
   return prompt
     .replace(
-      /\b(?:do not|don't|never|without|avoid)\s+(?:force[- ]push|run\s+rm\s+-[a-z]*r[a-z]*f|(?:open|create)\s+(?:\w+\s+){0,3}(?:pull request|issue)|(?:\w+\s+){0,4}(?:purge|overwrite|shred|upload|invite|approve|transfer|charge|refund))\b/gi,
+      /\b(?:explain|describe|show|teach)\b[\s\S]*?(?=\b(?:then|but|however|instead|yet)\b|[.;!?\n]|$)/gi,
       "",
     )
     .replace(
-      /\b(?:explain|describe|show|teach)\s+(?:me\s+)?(?:how\s+)?(?:to\s+)?(?:purge|overwrite|shred|upload|invite|approve|transfer|charge|refund)\b/gi,
+      /^\s*without\b[^,;.!?\n]*(?:,|(?=[;.!?\n]|$))/gi,
       "",
     )
     .replace(
-      /\b(?:do not|don't|never|without|avoid)\s+(?:\w+\s+){0,2}(?:delete|remove|erase|wipe|drop|truncate|reset|destroy|revoke|uninstall|send|email|message|post|publish|deploy|purchase|buy|book|schedule|merge|push|release)\b/gi,
+      /\bwithout\b[\s\S]*?(?=\b(?:but|however|instead|yet)\b|[.;!?\n]|$)/gi,
       "",
     )
     .replace(
-      /\b(?:explain|describe|show|teach)\s+(?:me\s+)?(?:how\s+)?(?:to\s+)?(?:delete|remove|erase|wipe|drop|truncate|reset|destroy|revoke|uninstall|send|email|message|post|publish|deploy|purchase|buy|book|schedule|merge|push|release)\b/gi,
+      /\b(?:do not|don't|never|avoid)\b[\s\S]*?(?=\b(?:but|however|instead|yet)\b|[.;!?\n]|$)/gi,
       "",
     )
     .replace(
@@ -181,13 +181,14 @@ function permissions(
   classification: RefinementResult["classification"],
 ): string[] {
   const result: string[] = [];
+  const actionable = actionableText(prompt);
   if (classification === "destructive_action") {
     result.push("destructive_change");
   }
   if (classification === "external_action") {
     result.push("external_side_effect");
   }
-  if (/\b(admin|sudo|root|elevated|full access)\b/i.test(prompt)) {
+  if (/\b(admin|sudo|root|elevated|full access)\b/i.test(actionable)) {
     result.push("elevated_access");
   }
   return result;
@@ -198,6 +199,7 @@ function needsClarification(
   classification: RefinementResult["classification"],
 ): string | undefined {
   const trimmed = prompt.trim();
+  const actionable = actionableText(trimmed);
   if (
     classification === "destructive_action" &&
     !/\b(file|folder|directory|branch|record|account|database|table|package|plugin|app|service|deployment)\b|(?:קובץ|תיקיה|ענף|רשומה|חשבון|מסד|טבלה|חבילה|תוסף|אפליקציה|שירות|פריסה)/i.test(
@@ -208,9 +210,9 @@ function needsClarification(
   }
   if (
     classification === "external_action" &&
-    /\b(send|email|message|publish|deploy)\b/i.test(trimmed) &&
+    /\b(send|email|message|publish|deploy)\b/i.test(actionable) &&
     !/\b(to|recipient|production|staging|preview|draft|channel|address|site|app|service)\b/i.test(
-      trimmed,
+      actionable,
     )
   ) {
     return "What exact target and destination should be used?";

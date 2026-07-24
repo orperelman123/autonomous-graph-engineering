@@ -50,15 +50,28 @@ downstream executor honoring the idempotency key.
 
 ## MCP
 
-Prompt Refiner exposes prompt compilation and evaluation tools. Graph Engineer
-exposes:
+Prompt Refiner exposes:
 
+- `refine_prompt`
+- `get_runtime_info`
+- `evaluate_prompt_refiner`
+
+Graph Engineer exposes:
+
+- `get_runtime_info`
 - `plan_graph`
 - `validate_graph`
 - `run_graph` for short synchronous executions
 - `start_graph` for immediate background-job creation
 - `get_graph_run` for polling a background job
 - `evaluate_graph_runtime`
+
+`get_runtime_info` reports the component version and managed installation
+identity. Its `status` is `current` after the host loads the active
+installation, `reload_required` when the bundle changed after that process
+started, `unmanaged` for source development, or `invalid_manifest` when a
+managed identity cannot be verified. Installation IDs are random correlation
+values, not credentials, and the response never returns the manifest path.
 
 Use `start_graph` and poll `get_graph_run` for multi-agent graphs or any run
 whose budget can approach the MCP client's request timeout. Jobs are retained in

@@ -64,3 +64,26 @@ test("rejects unresolved Windows shell shims", () => {
     /native \.exe or JavaScript entrypoint/,
   );
 });
+
+test("preserves direct executable resolution on Unix-like hosts", () => {
+  assert.deepEqual(
+    resolveAgentCommand("codex", {
+      execPath: "/usr/bin/node",
+      path: "/usr/local/bin:/usr/bin",
+      platform: "linux",
+    }),
+    { command: "codex", prefix: [] },
+  );
+  assert.deepEqual(
+    resolveAgentCommand("claude", {
+      configured: "/opt/claude/cli-wrapper.cjs",
+      execPath: "/usr/bin/node",
+      path: "/usr/bin",
+      platform: "linux",
+    }),
+    {
+      command: "/usr/bin/node",
+      prefix: ["/opt/claude/cli-wrapper.cjs"],
+    },
+  );
+});

@@ -78,6 +78,7 @@ It verifies how direct execution, a bounded repair loop, and a validated graph b
 - CLI-only reconciliation for ambiguous side effects
 - Artifact and repository semantic graders
 - MCP, CLI, and authenticated loopback-first HTTP interfaces
+- Host-visible runtime identity and deterministic post-upgrade reload detection
 - Optional fail-closed external security provider with hashed inputs
 
 ## Graph engineering and loop engineering
@@ -211,7 +212,13 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 117 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
+The current suite contains 125 unit, interface, integration, launch-readiness,
+and schema-contract tests, 21 adversarial graph evaluations, 30
+prompt-refinement evaluations, and a two-case repository semantic corpus. The
+checks are deterministic by default and do not require provider credentials.
+See [Evaluation](docs/evaluation.md) and the
+[benchmark methodology](docs/benchmark.md) for what they prove—and what they
+do not.
 
 ## Contributing
 

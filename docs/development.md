@@ -49,7 +49,7 @@ rebuild; do not make source changes only in generated files.
 | `npm run build` | Compile both workspaces | None |
 | `npm run typecheck` | Compile and type-check without emitting graph output | None |
 | `npm test` | Run all workspace and repository contract tests | None |
-| `npm run eval` | Run 20 graph and 27 prompt adversarial evaluations | None |
+| `npm run eval` | Run 21 graph and 30 prompt adversarial evaluations | None |
 | `npm run check` | Type-check, test, evaluate, and build | None |
 | `npm run doctor -- --json` | Inspect deterministic installation readiness | None |
 | `npm run demo` | Generate and validate a credential-free example | None |
@@ -121,7 +121,9 @@ npx tsx --test test/platform-plugins.test.ts test/install-rollback.test.ts
 ```
 
 Installation is transactional and must restore the previous bundle if
-post-activation verification fails.
+post-activation verification fails. Every managed install must also generate a
+new installation identity, propagate it to both MCP configurations, and make a
+stale process report `reload_required` without exposing local paths.
 
 ### Public contracts
 
