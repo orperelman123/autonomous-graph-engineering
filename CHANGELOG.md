@@ -10,6 +10,9 @@ All notable changes are documented here.
 - Add schema- and runtime-validated workflow examples for repository audit,
   bounded implementation, interface migration, and release preparation, with
   explicit permissions, budgets, independent verification, and safety guidance.
+- Make the offline quickstart a measurable four-step developer journey with a
+  strict path-free JSON report, committed-workflow contract validation, and
+  fail-closed policy tests.
 
 ## 0.3.3 - 2026-07-24
 

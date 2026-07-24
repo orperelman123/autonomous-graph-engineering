@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/quickstart-report.schema.json",
+  "title": "GraphVigil Quickstart Journey Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "journey", "status", "offline", "providerCredentialsRequired", "steps", "summary"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "journey": { "const": "installation-to-first-validated-workflow" },
+    "status": { "enum": ["ready", "blocked"] },
+    "offline": { "const": true },
+    "providerCredentialsRequired": { "const": false },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/environmentStep" },
+        { "$ref": "#/$defs/refinementStep" },
+        { "$ref": "#/$defs/generatedStep" },
+        { "$ref": "#/$defs/examplesStep" }
+      ],
+      "items": false
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "failed"],
+      "properties": {
+        "total": { "const": 4 },
+        "passed": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 4 }
+      }
+    }
+  },
+  "$defs": {
+    "environmentStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "passed", "evidence"],
+      "properties": {
+        "id": { "const": "environment" },
+        "passed": { "type": "boolean" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["checksPassed", "optionalWarnings", "failures"],
+          "properties": {
+            "checksPassed": { "type": "integer", "minimum": 0 },
+            "optionalWarnings": { "type": "integer", "minimum": 0 },
+            "failures": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "refinementStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "passed", "evidence"],
+      "properties": {
+        "id": { "const": "prompt-refinement" },
+        "passed": { "type": "boolean" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification", "permissionsRequired", "originalPromptPreserved"],
+          "properties": {
+            "classification": { "type": "string", "minLength": 1 },
+            "permissionsRequired": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "originalPromptPreserved": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "generatedStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "passed", "evidence"],
+      "properties": {
+        "id": { "const": "generated-workflow" },
+        "passed": { "type": "boolean" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["autonomy", "nodes", "maxParallel", "maxRepairRounds", "humanGates", "validationErrors"],
+          "properties": {
+            "autonomy": { "enum": ["plan_only", "read_only", "workspace", "consequential"] },
+            "nodes": { "type": "integer", "minimum": 1 },
+            "maxParallel": { "type": "integer", "minimum": 1 },
+            "maxRepairRounds": { "type": "integer", "minimum": 0 },
+            "humanGates": { "type": "integer", "minimum": 0 },
+            "validationErrors": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "examplesStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "passed", "evidence"],
+      "properties": {
+        "id": { "const": "committed-workflows" },
+        "passed": { "type": "boolean" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "schemaValid", "runtimeValid", "workflows"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 1 },
+            "schemaValid": { "type": "integer", "minimum": 0 },
+            "runtimeValid": { "type": "integer", "minimum": 0 },
+            "workflows": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

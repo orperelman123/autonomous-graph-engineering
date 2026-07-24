@@ -50,6 +50,11 @@ npx graph-engineer plan --force-graph "Audit every service and verify findings"
 
 The first command returns the original prompt hash, constraints, acceptance criteria, verification steps, and required permissions. The second returns a JSON graph with fixed budgets and the path `scope → investigate → reduce → cross-check → synthesize → acceptance`.
 
+The quickstart reports four measurable offline steps: environment readiness,
+prompt preservation, validation of a generated read-only graph, and schema plus
+runtime validation of all committed workflow examples. Use
+`npm run quickstart -- --json` for the path-free public report contract.
+
 Run the credential-free [control-plane benchmark](docs/benchmark.md):
 
 ```bash
@@ -218,7 +223,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 125 unit, interface, integration, launch-readiness,
+The current suite contains 131 unit, interface, integration, launch-readiness,
 and schema-contract tests, 21 adversarial graph evaluations, 30
 prompt-refinement evaluations, and a two-case repository semantic corpus. The
 checks are deterministic by default and do not require provider credentials.

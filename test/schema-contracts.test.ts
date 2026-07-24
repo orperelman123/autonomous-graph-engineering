@@ -115,6 +115,21 @@ test("doctor output satisfies its strict public report schema", async () => {
   );
 });
 
+test("quickstart output satisfies its strict public report schema", async () => {
+  const validate = await validator("quickstart-report.schema.json");
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/quickstart.mjs", "--json"],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+});
+
 test("portable run report satisfies its strict public schema", async () => {
   const validate = await validator("portable-run-report.schema.json");
   const directory = await mkdtemp(join(tmpdir(), "age-portable-schema-"));

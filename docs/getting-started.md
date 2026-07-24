@@ -15,9 +15,22 @@ npm ci
 npm run quickstart
 ```
 
-`quickstart` builds the workspaces, runs the environment doctor, compiles a real
-request, generates a bounded read-only graph, and validates it. It makes no
-provider call and does not require a key.
+`quickstart` builds the workspaces and measures four offline journey steps:
+environment readiness, intent-preserving prompt refinement, generation of one
+bounded read-only graph, and schema plus runtime validation of all committed
+workflow examples. It makes no provider call, requires no key, and returns
+nonzero if any step fails.
+
+For automation, emit the strict
+[`quickstart-report.schema.json`](../schemas/quickstart-report.schema.json)
+contract:
+
+```bash
+npm run quickstart -- --json
+```
+
+The JSON report contains only structural counts and policy outcomes. It omits
+prompts, provider output, credentials, and local filesystem paths.
 
 ## 2. Improve one prompt
 
