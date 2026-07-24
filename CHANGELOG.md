@@ -4,6 +4,10 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add a dry-run-first OpenAI Responses and Anthropic Messages benchmark
+  harness with preregistered plans, explicit cost ceilings, create-only
+  artifacts, provider-specific token accounting, strict schemas, and mocked
+  network coverage.
 - Add a manual, OIDC-based npm trusted-publishing workflow with provenance,
   exact tag/version verification, ordered publication, integrity-checked
   retries, least-privilege permissions, and documented bootstrap gates.

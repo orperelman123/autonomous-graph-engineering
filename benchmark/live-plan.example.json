@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "id": "replace-with-preregistered-study-id",
+  "budgetUsd": 1,
+  "repetitions": 1,
+  "timeoutMs": 60000,
+  "maxInputTokensPerRequest": 4096,
+  "maxOutputTokensPerRequest": 256,
+  "providers": [
+    {
+      "provider": "openai",
+      "model": "REPLACE_WITH_EXACT_OPENAI_MODEL_ID",
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "pricingUsdPerMillionTokens": {
+        "input": 0,
+        "cachedInput": 0,
+        "cacheCreationInput": 0,
+        "output": 0
+      }
+    },
+    {
+      "provider": "anthropic",
+      "model": "REPLACE_WITH_EXACT_ANTHROPIC_MODEL_ID",
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "pricingUsdPerMillionTokens": {
+        "input": 0,
+        "cachedInput": 0,
+        "cacheCreationInput": 0,
+        "output": 0
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "replace-with-preregistered-task",
+      "prompt": "Replace this with a frozen public task prompt.",
+      "requiredPhrases": [
+        "replace-with-preregistered-expected-phrase"
+      ]
+    }
+  ]
+}

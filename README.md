@@ -52,6 +52,10 @@ Run the credential-free [control-plane benchmark](docs/benchmark.md):
 npm run benchmark
 ```
 
+The same benchmark guide documents an optional preregistered live-provider
+harness. It defaults to a credential-free dry run; live paid execution always
+requires `--execute` and an exact finite budget confirmation.
+
 It verifies how direct execution, a bounded repair loop, and a validated graph behave when the same deterministic verifier rejects the first candidate. It does not claim to measure model intelligence, quality, cost, or speed.
 
 ## Features
@@ -195,7 +199,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 101 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
+The current suite contains 115 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
 
 ## Contributing
 

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -8,6 +10,7 @@ import addFormats from "ajv-formats";
 import { planGraph } from "../packages/graph-orchestrator/src/planner.js";
 import { validateGraph } from "../packages/graph-orchestrator/src/validator.js";
 import { compilePrompt } from "../packages/prompt-refiner/src/compiler.js";
+import { runLiveBenchmark } from "../scripts/live-provider-benchmark-lib.mjs";
 
 const execute = promisify(execFile);
 
@@ -126,5 +129,85 @@ test("provider-envelope benchmark satisfies its strict public report schema", as
     validate(report),
     true,
     JSON.stringify(validate.errors, null, 2),
+  );
+});
+
+test("live provider benchmark dry-run satisfies its strict public contracts", async () => {
+  const validatePlan = await validator("live-provider-benchmark-plan.schema.json");
+  const validateReport = await validator(
+    "live-provider-benchmark-report.schema.json",
+  );
+  const plan = {
+    version: "1.0",
+    id: "schema-contract-v1",
+    budgetUsd: 0.01,
+    repetitions: 1,
+    timeoutMs: 5_000,
+    maxInputTokensPerRequest: 1_024,
+    maxOutputTokensPerRequest: 100,
+    providers: [
+      {
+        provider: "openai",
+        model: "openai-exact-test-model",
+        apiKeyEnv: "OPENAI_API_KEY",
+        pricingUsdPerMillionTokens: {
+          input: 2,
+          cachedInput: 1,
+          cacheCreationInput: 0,
+          output: 4,
+        },
+      },
+    ],
+    tasks: [
+      {
+        id: "schema-task",
+        prompt: "Return schema contract passed.",
+        requiredPhrases: ["schema contract passed"],
+      },
+    ],
+  };
+  assert.equal(
+    validatePlan(plan),
+    true,
+    JSON.stringify(validatePlan.errors, null, 2),
+  );
+  const directory = await mkdtemp(join(tmpdir(), "age-live-schema-"));
+  const planPath = join(directory, "plan.json");
+  await writeFile(planPath, JSON.stringify(plan));
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/live-provider-benchmark.mjs", "--plan", planPath],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validateReport(report),
+    true,
+    JSON.stringify(validateReport.errors, null, 2),
+  );
+
+  const liveReport = await runLiveBenchmark({
+    plan,
+    execute: true,
+    confirmedBudgetUsd: plan.budgetUsd,
+    env: { OPENAI_API_KEY: "synthetic-test-key" },
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                { type: "output_text", text: "Schema contract passed." },
+              ],
+            },
+          ],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      ),
+  });
+  assert.equal(
+    validateReport(liveReport),
+    true,
+    JSON.stringify(validateReport.errors, null, 2),
   );
 });

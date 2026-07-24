@@ -102,5 +102,7 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 - [`doctor-report.schema.json`](../schemas/doctor-report.schema.json)
 - [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
 - [`provider-benchmark-report.schema.json`](../schemas/provider-benchmark-report.schema.json)
+- [`live-provider-benchmark-plan.schema.json`](../schemas/live-provider-benchmark-plan.schema.json)
+- [`live-provider-benchmark-report.schema.json`](../schemas/live-provider-benchmark-report.schema.json)
 
 Runtime validation remains authoritative even when a client performs JSON Schema validation first.

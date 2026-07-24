@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/live-provider-benchmark-report.schema.json",
+  "title": "Live Provider Benchmark Report",
+  "type": "object",
+  "required": ["version", "benchmark", "mode", "planId", "planSha256", "budgetUsd", "maximumCostUsd", "requestCount", "status", "costUsd", "results"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "benchmark": { "const": "live-provider-outcome" },
+    "mode": { "enum": ["dry_run", "live"] },
+    "planId": { "type": "string", "minLength": 1 },
+    "planSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "budgetUsd": { "type": "number", "exclusiveMinimum": 0 },
+    "maximumCostUsd": { "type": "number", "minimum": 0 },
+    "requestCount": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["ready", "completed", "failed"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "costUsd": { "type": "number", "minimum": 0 },
+    "accountingComplete": { "type": "boolean" },
+    "passed": { "type": "boolean" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "model", "taskId", "repetition", "passed", "requiredPhrases", "responseText", "usage", "costUsd", "violations"],
+        "properties": {
+          "provider": { "enum": ["openai", "anthropic"] },
+          "model": { "type": "string", "minLength": 1 },
+          "taskId": { "type": "string", "minLength": 1 },
+          "repetition": { "type": "integer", "minimum": 1 },
+          "passed": { "type": "boolean" },
+          "requiredPhrases": { "type": "array", "items": { "type": "string" } },
+          "responseText": { "type": "string" },
+          "usage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["inputTokens", "cachedInputTokens", "cacheCreationInputTokens", "outputTokens"],
+            "properties": {
+              "inputTokens": { "type": "integer", "minimum": 0 },
+              "cachedInputTokens": { "type": "integer", "minimum": 0 },
+              "cacheCreationInputTokens": { "type": "integer", "minimum": 0 },
+              "outputTokens": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "costUsd": { "type": "number", "minimum": 0 },
+          "violations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "dry_run" } }, "required": ["mode"] },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "version": true, "benchmark": true, "mode": true, "planId": true, "planSha256": true,
+          "budgetUsd": true, "maximumCostUsd": true, "requestCount": true, "status": { "const": "ready" },
+          "costUsd": { "const": 0 }, "results": { "type": "array", "maxItems": 0 }
+        }
+      },
+      "else": {
+        "required": ["startedAt", "completedAt", "accountingComplete", "passed"],
+        "additionalProperties": false,
+        "properties": {
+          "version": true, "benchmark": true, "mode": true, "planId": true, "planSha256": true,
+          "budgetUsd": true, "maximumCostUsd": true, "requestCount": true, "status": { "enum": ["completed", "failed"] },
+          "startedAt": true, "completedAt": true, "costUsd": true, "accountingComplete": true,
+          "passed": true, "results": true
+        }
+      }
+    }
+  ]
+}
