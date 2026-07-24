@@ -3,6 +3,12 @@ export {
   CodexCliExecutor,
   LocalEchoExecutor,
 } from "./executors.js";
+export { renderDoctorReport, runDoctor } from "./doctor.js";
+export type {
+  DoctorCheck,
+  DoctorOptions,
+  DoctorReport,
+} from "./doctor.js";
 export { runGraphEvaluation } from "./evaluation.js";
 export { gradeCheckpoint } from "./grader.js";
 export { planGraph } from "./planner.js";
@@ -17,6 +23,7 @@ export {
   runGraph,
 } from "./runtime.js";
 export {
+  executionIdempotencyKey,
   reconcileCheckpoint,
   reconciliationNeeds,
   reconciliationToken,
@@ -51,6 +58,7 @@ export type {
   PlanGraphRequest,
   RepairPolicy,
   ReconciliationRecord,
+  TerminationEvidence,
   RunGraphOptions,
   TokenUsage,
   ValidationIssue,

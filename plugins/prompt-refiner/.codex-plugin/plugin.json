@@ -1,6 +1,6 @@
 {
   "name": "prompt-refiner",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260724103010",
   "description": "Improve requests and execute complex work as validated, permission-safe autonomous graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"
@@ -23,6 +23,5 @@
       "Evaluate the prompt refiner for safety and quality.",
       "Plan and run this complex task as a verified autonomous graph."
     ]
-  },
-  "mcpServers": "./.mcp.json"
+  }
 }

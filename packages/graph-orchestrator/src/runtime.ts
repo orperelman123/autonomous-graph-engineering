@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+import { validatedOutput } from "./output-schema.js";
 import { CheckpointStore, JsonlEventStore } from "./persistence.js";
-import { reconciliationToken } from "./reconciliation.js";
+import {
+  executionIdempotencyKey,
+  reconciliationToken,
+} from "./reconciliation.js";
 import type {
   AgentExecutionRequest,
   GraphExecutor,
@@ -146,104 +150,6 @@ function deterministic(node: GraphNode, input: unknown): unknown {
   }
 }
 
-function schemaErrors(
-  schema: Record<string, unknown>,
-  value: unknown,
-  path = "$",
-): string[] {
-  const errors: string[] = [];
-  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
-    errors.push(`${path} is not one of the allowed values`);
-  }
-  const type = schema.type;
-  const matchesType =
-    type === undefined ||
-    (type === "object" &&
-      value !== null &&
-      typeof value === "object" &&
-      !Array.isArray(value)) ||
-    (type === "array" && Array.isArray(value)) ||
-    (type === "string" && typeof value === "string") ||
-    (type === "boolean" && typeof value === "boolean") ||
-    (type === "number" && typeof value === "number" && Number.isFinite(value)) ||
-    (type === "integer" && Number.isInteger(value)) ||
-    (type === "null" && value === null);
-  if (!matchesType) {
-    errors.push(`${path} must be ${String(type)}`);
-    return errors;
-  }
-  if (
-    type === "object" &&
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value)
-  ) {
-    const record = value as Record<string, unknown>;
-    const required = Array.isArray(schema.required)
-      ? schema.required.filter(
-          (entry): entry is string => typeof entry === "string",
-        )
-      : [];
-    for (const key of required) {
-      if (!(key in record)) errors.push(`${path}.${key} is required`);
-    }
-    const properties =
-      schema.properties &&
-      typeof schema.properties === "object" &&
-      !Array.isArray(schema.properties)
-        ? (schema.properties as Record<string, unknown>)
-        : {};
-    for (const [key, childSchema] of Object.entries(properties)) {
-      if (
-        key in record &&
-        childSchema &&
-        typeof childSchema === "object" &&
-        !Array.isArray(childSchema)
-      ) {
-        errors.push(
-          ...schemaErrors(
-            childSchema as Record<string, unknown>,
-            record[key],
-            `${path}.${key}`,
-          ),
-        );
-      }
-    }
-    if (schema.additionalProperties === false) {
-      for (const key of Object.keys(record)) {
-        if (!(key in properties)) {
-          errors.push(`${path}.${key} is not allowed`);
-        }
-      }
-    }
-  }
-  if (type === "array" && Array.isArray(value)) {
-    const itemSchema =
-      schema.items &&
-      typeof schema.items === "object" &&
-      !Array.isArray(schema.items)
-        ? (schema.items as Record<string, unknown>)
-        : undefined;
-    if (itemSchema) {
-      value.forEach((item, index) => {
-        errors.push(...schemaErrors(itemSchema, item, `${path}[${index}]`));
-      });
-    }
-  }
-  return errors;
-}
-
-function validatedOutput(node: GraphNode, output: unknown): unknown {
-  if (!node.outputSchema) return output;
-  const errors = schemaErrors(node.outputSchema, output);
-  if (errors.length > 0) {
-    throw new Error(
-      `node ${node.id} output schema violation: ${errors.join("; ")}`,
-    );
-  }
-  return output;
-}
-
 async function mapLimit<T, R>(
   values: T[],
   limit: number,
@@ -315,13 +221,19 @@ async function invokeExecutor(
   const watchdog = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
       controller.abort();
-      reject(new Error(`executor timed out for node ${request.nodeId}`));
+      reject(new ExecutorTimeoutError(request.nodeId));
     }, request.timeoutMs);
   });
   try {
     return await Promise.race([execution, watchdog]);
   } finally {
     if (timeout) clearTimeout(timeout);
+  }
+}
+
+class ExecutorTimeoutError extends Error {
+  constructor(readonly nodeId: string) {
+    super(`executor timed out for node ${nodeId}`);
   }
 }
 
@@ -342,6 +254,7 @@ async function executeNode(
   options: RunGraphOptions,
   timeoutMs: number,
   runLimited: RunLimited,
+  attemptId?: string,
 ): Promise<{ output: unknown; usage?: TokenUsage }> {
   const input = dependencyInput(node, outputs);
   if (node.kind === "deterministic" || node.kind === "reduce") {
@@ -385,6 +298,15 @@ async function executeNode(
               ...(node.outputSchema ? { outputSchema: node.outputSchema } : {}),
               cwd: options.cwd ?? process.cwd(),
               timeoutMs,
+              ...(attemptId ? { attemptId: `${attemptId}:${index}` } : {}),
+              ...(node.permission !== "none" && node.permission !== "read"
+                ? {
+                    idempotencyKey: executionIdempotencyKey(
+                      runId,
+                      `${node.id}:${index}`,
+                    ),
+                  }
+                : {}),
             }),
           );
         return {
@@ -408,6 +330,10 @@ async function executeNode(
     ...(node.outputSchema ? { outputSchema: node.outputSchema } : {}),
     cwd: options.cwd ?? process.cwd(),
     timeoutMs,
+    ...(attemptId ? { attemptId } : {}),
+    ...(node.permission !== "none" && node.permission !== "read"
+      ? { idempotencyKey: executionIdempotencyKey(runId, node.id) }
+      : {}),
   };
   const execution = await runLimited(() => invokeExecutor(executor, request));
   return {
@@ -617,6 +543,10 @@ export async function runGraph(
           }
           state.state = "running";
           state.startedAt = now().toISOString();
+          state.attemptId = randomUUID();
+          if (node.permission !== "none" && node.permission !== "read") {
+            state.idempotencyKey ??= executionIdempotencyKey(runId, node.id);
+          }
           await store.append(
             { runId, type: "node_started", nodeId: node.id },
             now(),
@@ -633,6 +563,7 @@ export async function runGraph(
               options,
               remainingMs,
               runLimited,
+              state.attemptId,
             );
             outputs[node.id] = execution.output;
             if (execution.usage) state.usage = execution.usage;
@@ -675,12 +606,23 @@ export async function runGraph(
             }
             state.state = "failed";
             state.error = (error as Error).message;
+            state.failureKind =
+              error instanceof ExecutorTimeoutError ||
+              /timed out/i.test(state.error)
+                ? "timeout"
+                : "executor";
             await store.append(
               {
                 runId,
                 type: "node_failed",
                 nodeId: node.id,
-                data: { error: state.error },
+                data: {
+                  error: state.error,
+                  failureKind: state.failureKind,
+                  ...(state.idempotencyKey
+                    ? { idempotencyKey: state.idempotencyKey }
+                    : {}),
+                },
               },
               now(),
             );

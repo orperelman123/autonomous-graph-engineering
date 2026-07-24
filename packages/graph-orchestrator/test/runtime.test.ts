@@ -411,7 +411,9 @@ test("runtime watchdog aborts a non-cooperative executor", async () => {
     autonomy: "read_only",
     primaryExecutor: "local",
   });
-  graph.budgets.timeoutMs = 50;
+  // Leave enough room for checkpoint I/O on slow or synchronized filesystems;
+  // the executor itself must start before the watchdog behavior is observable.
+  graph.budgets.timeoutMs = 1_000;
   const directory = await mkdtemp(join(tmpdir(), "graph-watchdog-"));
   try {
     const result = await runGraph(graph, {
@@ -421,6 +423,87 @@ test("runtime watchdog aborts a non-cooperative executor", async () => {
     assert.equal(result.status, "failed");
     assert.equal(aborted, true);
     assert.match(result.error ?? "", /executor timed out/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("timed-out side-effecting executors require reconciliation", async () => {
+  let resolveLateEffect: (() => void) | undefined;
+  const lateEffect = new Promise<void>((resolve) => {
+    resolveLateEffect = resolve;
+  });
+  class LateWriteExecutor implements GraphExecutor {
+    readonly name = "late-write";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId !== "execute") {
+        return { output: { accepted: true, reasons: [] } };
+      }
+      return await new Promise<AgentExecutionResult>((resolve) => {
+        setTimeout(() => {
+          resolveLateEffect?.();
+          resolve({ output: { applied: true } });
+        }, 750);
+      });
+    }
+  }
+  const graph = planGraph({
+    prompt: "Build the local parser.",
+    autonomy: "workspace",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  // Leave enough headroom for checkpoint I/O before the executor starts. The
+  // executor itself still outlives the graph deadline and resolves late.
+  graph.budgets.timeoutMs = 500;
+  const directory = await mkdtemp(join(tmpdir(), "graph-late-write-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new LateWriteExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    const checkpoint = await loadCheckpoint(directory, result.runId);
+    const needs = reconciliationNeeds(checkpoint);
+    assert.deepEqual(
+      needs.map((need) => need.nodeId),
+      ["execute"],
+    );
+    assert.equal(checkpoint.nodes.execute?.failureKind, "timeout");
+    assert.equal(needs[0]?.requiresTerminationConfirmation, true);
+    assert.match(needs[0]?.idempotencyKey ?? "", /^graph:.*:node:execute$/);
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: result.runId,
+        nodeId: "execute",
+        token: needs[0]!.token,
+        outcome: "not_applied",
+        evidence: "No effect is visible, but the executor may still be running.",
+      }),
+      /requires --termination-json/,
+    );
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: result.runId,
+        nodeId: "execute",
+        token: needs[0]!.token,
+        outcome: "not_applied",
+        evidence: "The executor process was independently inspected.",
+        terminationEvidence: {
+          attemptId: "wrong-attempt",
+          executor: "local",
+          observedAt: new Date().toISOString(),
+          method: "process-tree inspection",
+          status: "terminated",
+        },
+      }),
+      /must match the timed-out attempt and executor/,
+    );
+    await lateEffect;
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -453,6 +536,8 @@ test("repair preserves candidate permission and synchronizes final state", async
   const execute = graph.nodes.find((node) => node.id === "execute");
   assert.ok(execute);
   execute.permission = "read";
+  assert.ok(graph.repairPolicy);
+  graph.repairPolicy.enabled = true;
   execute.outputSchema = {
     type: "object",
     required: ["value"],
@@ -1072,6 +1157,8 @@ test("refuses automatic replay of an interrupted write node", async () => {
 
 test("requires fingerprint-bound reconciliation before retrying an ambiguous write", async () => {
   let executeCalls = 0;
+  const idempotencyKeys: Array<string | undefined> = [];
+  const attemptIds: Array<string | undefined> = [];
   class RetryExecutor implements GraphExecutor {
     readonly name = "retry";
     async execute(
@@ -1079,6 +1166,8 @@ test("requires fingerprint-bound reconciliation before retrying an ambiguous wri
     ): Promise<AgentExecutionResult> {
       if (request.nodeId === "execute") {
         executeCalls += 1;
+        idempotencyKeys.push(request.idempotencyKey);
+        attemptIds.push(request.attemptId);
         if (executeCalls === 1) throw new Error("simulated process loss");
         return { output: { applied: true } };
       }
@@ -1128,6 +1217,10 @@ test("requires fingerprint-bound reconciliation before retrying an ambiguous wri
     });
     assert.equal(resumed.status, "completed");
     assert.equal(executeCalls, 2);
+    assert.equal(idempotencyKeys.length, 2);
+    assert.equal(idempotencyKeys[0], idempotencyKeys[1]);
+    assert.match(idempotencyKeys[0] ?? "", /^graph:.*:node:execute$/);
+    assert.notEqual(attemptIds[0], attemptIds[1]);
     assert.equal(resumed.nodes.execute?.state, "completed");
     const events = (await readFile(resumed.auditPath!, "utf8"))
       .trim()
@@ -1191,6 +1284,60 @@ test("accepts operator-verified output without replaying an ambiguous write", as
       externallyVerified: true,
     });
     assert.equal(resumed.repairRounds, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects operator-verified output that violates the node schema", async () => {
+  class SchemaExecutor implements GraphExecutor {
+    readonly name = "schema-reconciliation";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "execute") {
+        throw new Error("simulated lost acknowledgement");
+      }
+      return { output: { accepted: true, reasons: [] } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Implement this focused change.",
+    autonomy: "workspace",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  const execute = graph.nodes.find((node) => node.id === "execute");
+  assert.ok(execute);
+  execute.outputSchema = {
+    type: "object",
+    required: ["applied"],
+    properties: { applied: { type: "boolean" } },
+    additionalProperties: false,
+  };
+  const directory = await mkdtemp(join(tmpdir(), "graph-reconcile-schema-"));
+  try {
+    const failed = await runGraph(graph, {
+      executors: { local: new SchemaExecutor() },
+      auditDirectory: directory,
+    });
+    const before = await loadCheckpoint(directory, failed.runId);
+    const [need] = reconciliationNeeds(before);
+    assert.ok(need);
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: failed.runId,
+        nodeId: "execute",
+        token: need.token,
+        outcome: "completed",
+        evidence: "Verified the target independently.",
+        output: { applied: "yes" },
+      }),
+      /output schema violation/,
+    );
+    const after = await loadCheckpoint(directory, failed.runId);
+    assert.deepEqual(after, before);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

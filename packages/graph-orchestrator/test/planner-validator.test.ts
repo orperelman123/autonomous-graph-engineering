@@ -101,6 +101,20 @@ test("rejects malformed budgets and unknown graph enums", () => {
   assert.ok(result.errors.some((issue) => issue.code === "INVALID_AUTONOMY"));
 });
 
+test("rejects prototype-sensitive node identifiers", () => {
+  for (const id of ["constructor", "prototype", "__proto__"]) {
+    const graph = planGraph({ prompt: "Explain this function." });
+    const node = graph.nodes[0];
+    assert.ok(node);
+    node.id = id;
+    const result = validateGraph(graph);
+    assert.equal(result.valid, false);
+    assert.ok(
+      result.errors.some((issue) => issue.code === "INVALID_NODE_ID"),
+    );
+  }
+});
+
 test("rejects maxParallel values that could stall or overload the scheduler", () => {
   for (const maxParallel of [0, -1, 101]) {
     const graph = planGraph({ prompt: "Explain this function." });
@@ -170,6 +184,25 @@ test("rejects side effects that would be replayed before a consequential gate", 
   assert.ok(
     result.errors.some(
       (issue) => issue.code === "CONSEQUENTIAL_PREFLIGHT_SIDE_EFFECT",
+    ),
+  );
+});
+
+test("disables generic repair for side-effecting candidates", () => {
+  const planned = planGraph({
+    prompt: "Build a local parser and run its tests.",
+    autonomy: "workspace",
+  });
+  assert.equal(planned.repairPolicy?.enabled, false);
+  assert.equal(validateGraph(planned).valid, true);
+
+  assert.ok(planned.repairPolicy);
+  planned.repairPolicy.enabled = true;
+  const result = validateGraph(planned);
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.errors.some(
+      (issue) => issue.code === "UNSAFE_SIDE_EFFECTING_REPAIR",
     ),
   );
 });

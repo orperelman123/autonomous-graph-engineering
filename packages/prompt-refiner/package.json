@@ -1,6 +1,6 @@
 {
   "name": "@autonomous-graph-engineering/prompt-refiner",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Intent-preserving prompt refinement and execution briefs for agent workflows.",
   "license": "MIT",
   "repository": {
@@ -38,7 +38,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/compiler.test.ts test/hook.test.ts test/mcp.test.ts test/provider.test.ts test/server.test.ts",
+    "test": "tsx --test test/compiler.test.ts test/hook.test.ts test/mcp.test.ts test/provider.test.ts test/server.test.ts test/wrapper.test.ts",
     "eval": "tsx src/cli.ts eval"
   },
   "engines": {

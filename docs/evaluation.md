@@ -2,8 +2,11 @@
 
 ## Current deterministic coverage
 
-- Prompt Refiner: 19 unit/interface tests and 27 evaluation cases
-- Graph Engineer: 43 unit/interface tests and 20 adversarial evaluation cases
+- Prompt Refiner: 21 unit/interface tests and 27 evaluation cases
+- Graph Engineer: 49 unit/interface tests and 20 adversarial evaluation cases
+- Public schema contracts: 5 runtime/schema/report agreement tests
+- Launch readiness: 3 doctor, benchmark, and offline-demo tests
+- Starter graphs: 1 public-schema and runtime-validator contract test
 - Repository semantic corpus: 2 cases
 - Strict TypeScript compilation
 - Package dry-run checks, link validation, and secret scanning in CI
@@ -14,6 +17,7 @@ Run everything:
 npm run check
 npm run secret-scan
 npm run link-check
+npm run benchmark
 ```
 
 ## Covered behaviors
@@ -33,7 +37,10 @@ The suites exercise:
 - atomic checkpoint resume, gate re-approval, and tamper rejection;
 - actual Codex and Claude usage parsing;
 - artifact grading and semantic expectations;
-- reconciliation token rejection, retry, verified completion, and no replay;
+- reconciliation token rejection, retry, schema-validated completion, and no replay;
+- side-effecting repair rejection and late-timeout reconciliation;
+- standalone wrapper option boundaries;
+- real prompt and graph objects against the published JSON Schemas;
 - HTTP authentication and unsafe-bind refusal.
 
 ## What a passing score means

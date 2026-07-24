@@ -1,0 +1,37 @@
+name: Platform compatibility
+description: Report a sanitized installation or execution result on a specific platform.
+title: "[Platform]: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: OS, architecture, and shell
+      placeholder: Ubuntu 24.04, x64, bash
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Node and npm versions
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command and sanitized result
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Proposed documentation or test correction
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: Logs contain no credentials, private prompts, transcripts, or absolute user paths.
+          required: true

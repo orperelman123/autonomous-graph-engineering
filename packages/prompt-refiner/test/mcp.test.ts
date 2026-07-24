@@ -4,6 +4,23 @@ import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+async function stopChild(child: ReturnType<typeof spawn>): Promise<void> {
+  if (child.exitCode !== null) return;
+  const exited = new Promise<void>((resolveExit) =>
+    child.once("exit", () => resolveExit()),
+  );
+  child.stdin.end();
+  child.kill();
+  await Promise.race([
+    exited,
+    new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 2_000)),
+  ]);
+  if (child.exitCode === null) {
+    child.kill("SIGKILL");
+    await exited;
+  }
+}
+
 test("MCP server initializes and exposes refinement tools", async () => {
   const testDir = dirname(fileURLToPath(import.meta.url));
   const serverPath = resolve(testDir, "..", "src", "mcp-server.ts");
@@ -52,7 +69,7 @@ test("MCP server initializes and exposes refinement tools", async () => {
     }, 10);
   });
 
-  child.kill();
+  await stopChild(child);
   const responses = lines.map((line) => JSON.parse(line)) as Array<{
     id: number;
     result?: { tools?: Array<{ name: string }> };

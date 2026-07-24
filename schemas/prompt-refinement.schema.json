@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://local.invalid/schemas/prompt-refinement.schema.json",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/prompt-refinement.schema.json",
   "title": "Prompt refinement result",
   "type": "object",
   "additionalProperties": false,

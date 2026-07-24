@@ -40,3 +40,25 @@ jobs:
       - run: npm run build
       - run: npm pack --dry-run --workspace @autonomous-graph-engineering/prompt-refiner
       - run: npm pack --dry-run --workspace @autonomous-graph-engineering/graph-engineer
+
+  launch-readiness:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      PROMPT_REFINER_PROVIDER: none
+      CODEX_EXECUTABLE: ""
+      CLAUDE_EXECUTABLE: ""
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run doctor -- --json
+      - run: npm run demo
+      - run: npm run benchmark
+      - run: npm run secret-scan
+      - run: npm run link-check

@@ -5,6 +5,7 @@ import {
   CodexCliExecutor,
   LocalEchoExecutor,
 } from "./executors.js";
+import { renderDoctorReport, runDoctor } from "./doctor.js";
 import { runGraphEvaluation } from "./evaluation.js";
 import { gradeCheckpoint } from "./grader.js";
 import { loadCheckpoint } from "./persistence.js";
@@ -29,12 +30,13 @@ import { validateGraph } from "./validator.js";
 function usage(): never {
   process.stderr.write(`Usage:
   graph-engineer plan [--autonomy level] [--executor codex|claude|local] [--verifier codex|claude|local] [--force-graph] <prompt>
+  graph-engineer doctor [--json] [--root <path>] [--plugin-dir <path>]
   graph-engineer validate <graph.json>
   graph-engineer run [--autonomy level] [--executor codex|claude|local] [--verifier codex|claude|local] [--approve graph-id:fingerprint:gate-id] <prompt>
   graph-engineer run-file [--approve graph-id:fingerprint:gate-id] <graph.json>
   graph-engineer resume [--approve graph-id:fingerprint:gate-id] <run-id>
   graph-engineer inspect <run-id>
-  graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>]
+  graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>] [--termination-json <json>]
   graph-engineer grade <run-id>
   graph-engineer semantic-grade <run-id> <corpus.json> <case-id>
   graph-engineer eval
@@ -72,6 +74,21 @@ function promptArgs(args: string[]): string[] {
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
   if (!command) usage();
+  if (command === "doctor") {
+    const root = option(args, "--root");
+    const pluginDirectory = option(args, "--plugin-dir");
+    const report = await runDoctor({
+      ...(root ? { root } : {}),
+      ...(pluginDirectory ? { pluginDirectory } : {}),
+    });
+    process.stdout.write(
+      args.includes("--json")
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : renderDoctorReport(report),
+    );
+    process.exitCode = report.status === "ready" ? 0 : 1;
+    return;
+  }
   if (command === "eval") {
     const report = await runGraphEvaluation();
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -140,6 +157,7 @@ async function main(): Promise<void> {
     const outcome = option(args, "--outcome");
     const evidence = option(args, "--evidence");
     const outputJson = option(args, "--output-json");
+    const terminationJson = option(args, "--termination-json");
     if (
       !runId ||
       !nodeId ||
@@ -159,6 +177,17 @@ async function main(): Promise<void> {
       evidence,
       ...(outputJson !== undefined
         ? { output: JSON.parse(outputJson) as unknown }
+        : {}),
+      ...(terminationJson !== undefined
+        ? {
+            terminationEvidence: JSON.parse(terminationJson) as {
+              attemptId: string;
+              executor: string;
+              observedAt: string;
+              method: string;
+              status: "terminated";
+            },
+          }
         : {}),
     });
     process.stdout.write(

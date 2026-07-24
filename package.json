@@ -1,8 +1,8 @@
 {
   "name": "autonomous-graph-engineering",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Permission-safe prompt refinement and autonomous graph orchestration for Codex and Claude Code.",
+  "description": "Permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, and GitHub Copilot.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -11,12 +11,21 @@
   "scripts": {
     "build": "npm run build --workspace @autonomous-graph-engineering/prompt-refiner && npm run build --workspace @autonomous-graph-engineering/graph-engineer",
     "typecheck": "npm run build --workspace @autonomous-graph-engineering/prompt-refiner && npm run typecheck --workspace @autonomous-graph-engineering/prompt-refiner && npm run typecheck --workspace @autonomous-graph-engineering/graph-engineer",
-    "pretest": "npm run build --workspace @autonomous-graph-engineering/prompt-refiner",
-    "test": "npm run test --workspaces --if-present",
+    "pretest": "npm run build",
+    "test": "npm run test --workspaces --if-present && tsx --test test/schema-contracts.test.ts test/launch-readiness.test.ts test/install-rollback.test.ts test/platform-plugins.test.ts",
     "preeval": "npm run build --workspace @autonomous-graph-engineering/prompt-refiner",
     "eval": "npm run eval --workspaces --if-present",
     "check": "npm run typecheck && npm test && npm run eval && npm run build",
     "install:local": "node scripts/install.mjs",
+    "install:cursor": "node scripts/install.mjs --platform cursor",
+    "install:copilot": "node scripts/install.mjs --platform copilot",
+    "verify:install": "node scripts/verify-install.mjs",
+    "predoctor": "npm run build",
+    "doctor": "node scripts/doctor.mjs",
+    "demo": "node scripts/demo.mjs",
+    "prebenchmark": "npm run build",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:providers:offline": "npm run build --workspace @autonomous-graph-engineering/graph-engineer && node scripts/provider-benchmark.mjs",
     "secret-scan": "node scripts/secret-scan.mjs",
     "link-check": "node scripts/check-links.mjs"
   },
@@ -25,6 +34,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0"
   }

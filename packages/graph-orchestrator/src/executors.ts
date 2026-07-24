@@ -10,6 +10,17 @@ import type {
 function renderPrompt(request: AgentExecutionRequest): string {
   return [
     request.prompt,
+    ...(request.idempotencyKey
+      ? [
+          "",
+          "EXECUTION IDEMPOTENCY KEY:",
+          request.idempotencyKey,
+          ...(request.attemptId
+            ? [`Attempt identifier: ${request.attemptId}`]
+            : []),
+          "Use this exact key for every idempotent side-effect request and never invent a replacement.",
+        ]
+      : []),
     "",
     "NODE INPUT:",
     JSON.stringify(request.input),

@@ -43,6 +43,9 @@ Every non-plan run creates:
 - `<run-id>.checkpoint.json`: atomic graph, state, outputs, usage, and reconciliation data.
 
 Resume reuses completed nodes. Interrupted read-only nodes may retry. Interrupted write, external, or destructive nodes require explicit operator reconciliation.
+Generic verifier-driven repair is limited to non-side-effecting candidates.
+Write, external, and destructive candidates require a new explicit run or
+reconciliation because a timed-out executor may finish after its watchdog fires.
 
 ### Executors
 

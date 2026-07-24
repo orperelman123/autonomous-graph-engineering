@@ -1,0 +1,18 @@
+{
+  "name": "autonomous-graph-engineering",
+  "owner": {
+    "name": "Autonomous Graph Engineering contributors"
+  },
+  "metadata": {
+    "description": "Intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "prompt-refiner",
+      "description": "Improve prompts and run bounded, validated engineering graphs.",
+      "version": "0.2.0",
+      "source": "./plugins/prompt-refiner"
+    }
+  ]
+}

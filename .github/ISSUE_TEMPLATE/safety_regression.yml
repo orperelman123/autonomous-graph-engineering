@@ -1,0 +1,34 @@
+name: Public safety regression
+description: Report a non-sensitive invariant failure. Use private reporting if exploitability is uncertain.
+title: "[Safety]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: If this may be exploitable or exposes private data, stop and use GitHub private vulnerability reporting instead.
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Disclosure check
+      options:
+        - label: I have determined this report contains no exploit, credential, private data, or production target.
+          required: true
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Safety invariant
+      description: Identify the exact documented invariant.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal synthetic failing test
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected fail-closed behavior
+    validations:
+      required: true

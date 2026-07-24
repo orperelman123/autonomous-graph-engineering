@@ -1,5 +1,24 @@
 # Examples
 
+## Thirty-second offline demo
+
+```bash
+npm run demo
+```
+
+This compiles a real prompt and generates and validates a bounded read-only graph without provider credentials or network access.
+
+## Copy-paste starter graph
+
+[`repository-audit.graph.json`](repository-audit.graph.json) is a validated, read-only graph with two-agent concurrency and an independent Claude verifier.
+
+```bash
+graph-engineer validate examples/repository-audit.graph.json
+graph-engineer run-file examples/repository-audit.graph.json
+```
+
+The first command is offline. The second invokes the configured Codex and Claude CLIs.
+
 ## Deterministic refinement
 
 ```bash

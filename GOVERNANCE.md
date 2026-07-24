@@ -19,6 +19,8 @@ Routine changes are accepted through reviewed pull requests. Decisions prioritiz
 
 Security-sensitive or breaking changes require explicit maintainer approval and updated documentation, tests, and migration guidance.
 
+The [community contribution paths](docs/community-contributions.md) define bounded entry points for diagnostics, evaluation cases, starter graphs, platform evidence, and public non-sensitive safety regressions.
+
 ## Releases
 
 Maintainers create tagged releases after CI, security scanning, package dry runs, and release-note review pass. Generated artifacts are built from tagged source.
