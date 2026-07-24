@@ -1,0 +1,14 @@
+{
+  "name": "autonomous-graph-engineering",
+  "owner": {
+    "name": "Autonomous Graph Engineering contributors"
+  },
+  "description": "Prompt refinement and permission-safe autonomous engineering graphs.",
+  "plugins": [
+    {
+      "name": "prompt-refiner",
+      "source": "./plugins/prompt-refiner",
+      "description": "Improve prompts, enforce hook gates, and run verified engineering graphs."
+    }
+  ]
+}

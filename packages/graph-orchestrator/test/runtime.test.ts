@@ -426,6 +426,53 @@ test("runtime watchdog aborts a non-cooperative executor", async () => {
   }
 });
 
+test("timed-out side-effecting executors require reconciliation", async () => {
+  let resolveLateEffect: (() => void) | undefined;
+  const lateEffect = new Promise<void>((resolve) => {
+    resolveLateEffect = resolve;
+  });
+  class LateWriteExecutor implements GraphExecutor {
+    readonly name = "late-write";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId !== "execute") {
+        return { output: { accepted: true, reasons: [] } };
+      }
+      return await new Promise<AgentExecutionResult>((resolve) => {
+        setTimeout(() => {
+          resolveLateEffect?.();
+          resolve({ output: { applied: true } });
+        }, 75);
+      });
+    }
+  }
+  const graph = planGraph({
+    prompt: "Build the local parser.",
+    autonomy: "workspace",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  graph.budgets.timeoutMs = 20;
+  const directory = await mkdtemp(join(tmpdir(), "graph-late-write-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new LateWriteExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    const checkpoint = await loadCheckpoint(directory, result.runId);
+    const needs = reconciliationNeeds(checkpoint);
+    assert.deepEqual(
+      needs.map((need) => need.nodeId),
+      ["execute"],
+    );
+    await lateEffect;
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("repair preserves candidate permission and synchronizes final state", async () => {
   const repairPermissions: string[] = [];
   class RepairExecutor implements GraphExecutor {
@@ -453,6 +500,8 @@ test("repair preserves candidate permission and synchronizes final state", async
   const execute = graph.nodes.find((node) => node.id === "execute");
   assert.ok(execute);
   execute.permission = "read";
+  assert.ok(graph.repairPolicy);
+  graph.repairPolicy.enabled = true;
   execute.outputSchema = {
     type: "object",
     required: ["value"],
@@ -1191,6 +1240,60 @@ test("accepts operator-verified output without replaying an ambiguous write", as
       externallyVerified: true,
     });
     assert.equal(resumed.repairRounds, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects operator-verified output that violates the node schema", async () => {
+  class SchemaExecutor implements GraphExecutor {
+    readonly name = "schema-reconciliation";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "execute") {
+        throw new Error("simulated lost acknowledgement");
+      }
+      return { output: { accepted: true, reasons: [] } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Implement this focused change.",
+    autonomy: "workspace",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  const execute = graph.nodes.find((node) => node.id === "execute");
+  assert.ok(execute);
+  execute.outputSchema = {
+    type: "object",
+    required: ["applied"],
+    properties: { applied: { type: "boolean" } },
+    additionalProperties: false,
+  };
+  const directory = await mkdtemp(join(tmpdir(), "graph-reconcile-schema-"));
+  try {
+    const failed = await runGraph(graph, {
+      executors: { local: new SchemaExecutor() },
+      auditDirectory: directory,
+    });
+    const before = await loadCheckpoint(directory, failed.runId);
+    const [need] = reconciliationNeeds(before);
+    assert.ok(need);
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: failed.runId,
+        nodeId: "execute",
+        token: need.token,
+        outcome: "completed",
+        evidence: "Verified the target independently.",
+        output: { applied: "yes" },
+      }),
+      /output schema violation/,
+    );
+    const after = await loadCheckpoint(directory, failed.runId);
+    assert.deepEqual(after, before);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

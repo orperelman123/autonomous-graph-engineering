@@ -173,3 +173,22 @@ test("rejects side effects that would be replayed before a consequential gate", 
     ),
   );
 });
+
+test("disables generic repair for side-effecting candidates", () => {
+  const planned = planGraph({
+    prompt: "Build a local parser and run its tests.",
+    autonomy: "workspace",
+  });
+  assert.equal(planned.repairPolicy?.enabled, false);
+  assert.equal(validateGraph(planned).valid, true);
+
+  assert.ok(planned.repairPolicy);
+  planned.repairPolicy.enabled = true;
+  const result = validateGraph(planned);
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.errors.some(
+      (issue) => issue.code === "UNSAFE_SIDE_EFFECTING_REPAIR",
+    ),
+  );
+});

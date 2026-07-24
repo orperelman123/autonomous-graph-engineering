@@ -1,4 +1,5 @@
 import { CheckpointStore, JsonlEventStore, loadCheckpoint } from "./persistence.js";
+import { validatedOutput } from "./output-schema.js";
 import type {
   GraphRunCheckpoint,
   NodePermission,
@@ -75,6 +76,14 @@ export async function reconcileCheckpoint(input: {
   if (input.outcome === "completed" && input.output === undefined) {
     throw new Error("completed reconciliation requires --output-json");
   }
+  const node = checkpoint.graph.nodes.find(
+    (candidate) => candidate.id === input.nodeId,
+  );
+  if (!node) throw new Error(`graph node missing: ${input.nodeId}`);
+  const output =
+    input.outcome === "completed"
+      ? validatedOutput(node, input.output)
+      : undefined;
   const state = checkpoint.nodes[input.nodeId];
   if (!state) throw new Error(`checkpoint node missing: ${input.nodeId}`);
   const createdAt = now().toISOString();
@@ -87,10 +96,10 @@ export async function reconcileCheckpoint(input: {
   };
   if (input.outcome === "completed") {
     state.state = "completed";
-    state.output = input.output;
+    state.output = output;
     state.completedAt = createdAt;
     delete state.error;
-    checkpoint.outputs[input.nodeId] = input.output;
+    checkpoint.outputs[input.nodeId] = output;
   } else {
     state.state = "pending";
     delete state.output;
@@ -119,7 +128,7 @@ export async function reconcileCheckpoint(input: {
       data: {
         outcome: input.outcome,
         evidence,
-        ...(input.outcome === "completed" ? { output: input.output } : {}),
+        ...(input.outcome === "completed" ? { output } : {}),
       },
     },
     now(),

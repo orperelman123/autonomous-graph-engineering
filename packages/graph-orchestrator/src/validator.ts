@@ -654,14 +654,15 @@ export function validateGraph(graph: GraphSpec): GraphValidationResult {
       (node) => node.id === graph.repairPolicy?.candidateNodeId,
     );
     if (
+      candidate?.permission === "write" ||
       candidate?.permission === "external" ||
       candidate?.permission === "destructive"
     ) {
       errors.push({
-        code: "UNSAFE_CONSEQUENTIAL_REPAIR",
+        code: "UNSAFE_SIDE_EFFECTING_REPAIR",
         nodeId: candidate.id,
         message:
-          "external and destructive action evidence cannot be replaced by generic repair",
+          "write, external, and destructive candidates require explicit reconciliation instead of generic automated repair",
       });
     }
   }

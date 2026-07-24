@@ -286,7 +286,7 @@ export function planGraph(request: PlanGraphRequest): GraphSpec {
     budgets: { ...DEFAULT_BUDGETS },
     nodes,
     repairPolicy: {
-      enabled: !consequential,
+      enabled: !consequential && permission !== "write",
       candidateNodeId,
       verifierNodeId,
       acceptedField: "accepted",

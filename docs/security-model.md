@@ -32,6 +32,9 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - HTTP approval requires an API key plus `GRAPH_ENGINEER_ALLOW_HTTP_APPROVALS=1`.
 - An unfinished checkpoint cannot carry a completed human gate across resume
   unless the trusted caller supplies the exact graph-bound approval again.
+- Generic automated repair cannot execute with write, external, or destructive
+  permission. A timed-out side-effecting node is treated as uncertain and must
+  be reconciled before resume.
 
 ### Execution isolation
 

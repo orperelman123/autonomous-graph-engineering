@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agent-finops.local/schemas/autonomous-graph.schema.json",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/autonomous-graph.schema.json",
   "title": "Autonomous Engineering Graph",
   "type": "object",
   "additionalProperties": false,

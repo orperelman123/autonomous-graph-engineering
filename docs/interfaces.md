@@ -6,11 +6,14 @@
 prompt-refiner refine [--semantic] <prompt>
 prompt-refiner eval
 prompt-refiner serve [port]
-codex-better [codex arguments...]
-claude-better [claude arguments...]
+codex-better [--semantic] [--dry-run] [--] <prompt>
+claude-better [--semantic] [--dry-run] [--] <prompt>
 ```
 
 Deterministic mode requires no provider key. Optional semantic mode uses the variables in [`config/prompt-refiner.example.env`](../config/prompt-refiner.example.env).
+The standalone wrappers accept prompt-refiner options only; they do not forward
+arbitrary flags to the underlying agent. Use `--` when the prompt itself begins
+with a double-dash token.
 
 ## Graph Engineer CLI
 

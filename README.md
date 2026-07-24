@@ -1,18 +1,49 @@
+<div align="center">
+
 # Autonomous Graph Engineering
+
+**Turn a request into a bounded, verified execution graph—not an agent that loops forever.**
+
+[Quick start](#quick-start) · [Why graphs?](docs/why-graphs.md) · [Evaluation](docs/evaluation.md) · [Roadmap](ROADMAP.md)
+
+</div>
 
 [![CI](https://github.com/orperelman123/autonomous-graph-engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/orperelman123/autonomous-graph-engineering/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/orperelman123/autonomous-graph-engineering/actions/workflows/codeql.yml/badge.svg)](https://github.com/orperelman123/autonomous-graph-engineering/actions/workflows/codeql.yml)
+[![GitHub release](https://img.shields.io/github/v/release/orperelman123/autonomous-graph-engineering)](https://github.com/orperelman123/autonomous-graph-engineering/releases)
+[![GitHub stars](https://img.shields.io/github/stars/orperelman123/autonomous-graph-engineering?style=social)](https://github.com/orperelman123/autonomous-graph-engineering/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An open-source TypeScript system that improves prompts without changing intent, turns complex work into bounded execution graphs, runs Codex and Claude Code as isolated workers, verifies results, and gates consequential actions.
+An open-source TypeScript runtime and plugin for Codex and Claude Code. It preserves the user's original request, decomposes broad work into a validated DAG, runs isolated workers, cross-checks results, caps repair, and stops for human approval before consequential actions.
 
-This project combines graph engineering and loop engineering:
+## The problem it solves
 
-- a directed acyclic graph handles decomposition, concurrency, deterministic reduction, cross-checking, and synthesis;
-- a verifier-controlled repair loop is capped by explicit budgets;
-- human gates and reconciliation records control external or ambiguous side effects.
+Agent loops are useful, but an unbounded loop can silently expand scope, repeat a side effect, burn tokens, or accept its own weak answer. Autonomous Graph Engineering makes the control plane explicit:
 
-It implements public agent-engineering patterns. It is not represented as OpenAI's or Anthropic's private internal system.
+- the graph decides what may run, in what order, and with which permission;
+- budgets bound nodes, concurrency, fan-out, time, tokens, and repair;
+- an independent verifier controls a small repair loop;
+- fingerprint-bound gates and reconciliation records protect side effects;
+- checkpoints and JSONL events make every run inspectable.
+
+This project implements public agent-engineering patterns. It is not represented as OpenAI's or Anthropic's private internal system.
+
+## See it in 60 seconds
+
+```bash
+git clone https://github.com/orperelman123/autonomous-graph-engineering.git
+cd autonomous-graph-engineering
+npm ci
+npm run build
+
+# Preserve intent and compile a safer execution brief.
+npx prompt-refiner refine "Review auth, keep scope fixed, and verify every claim"
+
+# Build a bounded read-only DAG with independent verification.
+npx graph-engineer plan --force-graph "Audit every service and verify findings"
+```
+
+The first command returns the original prompt hash, constraints, acceptance criteria, verification steps, and required permissions. The second returns a JSON graph with fixed budgets and the path `scope → investigate → reduce → cross-check → synthesize → acceptance`.
 
 ## Features
 
@@ -28,6 +59,19 @@ It implements public agent-engineering patterns. It is not represented as OpenAI
 - CLI-only reconciliation for ambiguous side effects
 - Artifact and repository semantic graders
 - MCP, CLI, and authenticated loopback-first HTTP interfaces
+
+## Graph engineering and loop engineering
+
+They are complements, not competitors:
+
+| Use a loop for | Use a graph for |
+| --- | --- |
+| Repeatedly improve one candidate | Decompose work with dependencies |
+| Retry after verifier feedback | Run safe independent work concurrently |
+| Stop after a small fixed number of rounds | Give each node an explicit permission and budget |
+| Local convergence | Cross-check, synthesize, checkpoint, and audit a whole workflow |
+
+This project places a **bounded repair loop inside a validated graph**. See [Why graphs, loops, and gates belong together](docs/why-graphs.md).
 
 ## Quick start
 
@@ -65,6 +109,15 @@ npm run install:local
 ```
 
 Then follow the [Codex and Claude Code installation guide](docs/installation.md).
+
+For Claude Code, the repository is also a plugin marketplace:
+
+```text
+/plugin marketplace add orperelman123/autonomous-graph-engineering
+/plugin install prompt-refiner@autonomous-graph-engineering
+```
+
+The plugin installs the skills and safety hooks. Register the two MCP servers using the [installation guide](docs/installation.md) to expose executable prompt-refinement and graph tools.
 
 ## Architecture
 
@@ -116,9 +169,11 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 62 unit and interface tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. See [Evaluation](docs/evaluation.md) for what those checks prove—and what they do not.
+The current suite contains 69 unit, interface, and schema-contract tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) for what they prove—and what they do not.
 
 ## Contributing
+
+The project is young, so focused feedback has outsized value. Try the quick start, report the first confusing step, propose a real workflow, or take an item from the [roadmap](ROADMAP.md).
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports should follow [SECURITY.md](SECURITY.md), not public issues.
 
