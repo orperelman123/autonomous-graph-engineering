@@ -74,20 +74,30 @@ test("public graph schema and runtime validator agree on core budgets", async ()
   );
 });
 
-test("starter repository-audit graph satisfies both public contracts", async () => {
+test("real-world workflow examples satisfy both public contracts", async () => {
   const validateSchema = await validator("autonomous-graph.schema.json");
-  const graph = JSON.parse(
-    await readFile(
-      new URL("../examples/repository-audit.graph.json", import.meta.url),
-      "utf8",
-    ),
-  );
-  assert.equal(
-    validateSchema(graph),
-    true,
-    JSON.stringify(validateSchema.errors, null, 2),
-  );
-  assert.equal(validateGraph(graph).valid, true);
+  const examples = [
+    "repository-audit.graph.json",
+    "implementation.graph.json",
+    "migration.graph.json",
+    "release-preparation.graph.json",
+  ];
+  for (const name of examples) {
+    const graph = JSON.parse(
+      await readFile(new URL(`../examples/${name}`, import.meta.url), "utf8"),
+    );
+    assert.equal(
+      validateSchema(graph),
+      true,
+      `${name}: ${JSON.stringify(validateSchema.errors, null, 2)}`,
+    );
+    const runtimeValidation = validateGraph(graph);
+    assert.equal(
+      runtimeValidation.valid,
+      true,
+      `${name}: ${JSON.stringify(runtimeValidation.errors, null, 2)}`,
+    );
+  }
 });
 
 test("doctor output satisfies its strict public report schema", async () => {

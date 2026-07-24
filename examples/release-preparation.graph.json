@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "id": "starter-repository-audit",
-  "goal": "Audit this repository read-only, investigate components independently, deduplicate findings, and verify every claim.",
-  "originalPromptHash": "40df2fc1bcf5f9de53a28c08b690392958d174ec99b47808433b28d0e5c444fd",
+  "id": "starter-release-preparation",
+  "goal": "Prepare a read-only release-readiness report from repository evidence without tagging, publishing, or changing external state.",
+  "originalPromptHash": "793c4164dce699c79bfa2e4302697cf7e120c89b132cf5439204f25fe7ffafb0",
   "autonomy": "read_only",
   "createdAt": "2026-07-24T00:00:00.000Z",
   "budgets": {
-    "maxNodes": 8,
+    "maxNodes": 5,
     "maxParallel": 2,
     "maxFanout": 4,
     "maxDepth": 4,
@@ -18,18 +18,19 @@
   "nodes": [
     {
       "id": "scope",
-      "label": "Select repository components",
+      "label": "Select release evidence areas",
       "kind": "agent",
       "dependsOn": [],
       "permission": "read",
       "executor": "codex",
-      "prompt": "Inspect the repository and return at most four bounded components as JSON {\"items\":[{\"id\":\"...\",\"task\":\"...\"}]}.",
+      "prompt": "Return at most four bounded release-readiness evidence areas as JSON {\"items\":[{\"id\":\"...\",\"task\":\"...\"}]}. Include version consistency, deterministic gates, documentation, and artifact privacy. Do not change state.",
       "outputSchema": {
         "type": "object",
         "required": ["items"],
         "properties": {
           "items": {
             "type": "array",
+            "maxItems": 4,
             "items": {
               "type": "object",
               "required": ["id", "task"],
@@ -43,32 +44,32 @@
       }
     },
     {
-      "id": "investigate",
-      "label": "Inspect components independently",
+      "id": "inspect",
+      "label": "Inspect release evidence independently",
       "kind": "parallel_map",
       "dependsOn": ["scope"],
       "permission": "read",
       "executor": "codex",
-      "prompt": "Inspect only this component. Return findings, exact file evidence, uncertainty, and verification steps.",
+      "prompt": "Inspect only this evidence area. Return exact repository evidence, pass or fail status, uncertainty, and a deterministic verification command. Do not tag, publish, modify files, or access credentials.",
       "inputPath": "items",
       "maxConcurrency": 2
     },
     {
-      "id": "reduce",
-      "label": "Deduplicate findings",
+      "id": "collect",
+      "label": "Collect release evidence",
       "kind": "reduce",
-      "dependsOn": ["investigate"],
+      "dependsOn": ["inspect"],
       "permission": "none",
       "operation": "dedupe"
     },
     {
       "id": "verify",
-      "label": "Verify the audit",
+      "label": "Verify release readiness report",
       "kind": "verifier",
-      "dependsOn": ["reduce"],
+      "dependsOn": ["collect"],
       "permission": "read",
       "executor": "claude",
-      "prompt": "Try to disprove each finding against the cited files. Return JSON with accepted:boolean and reasons:string[].",
+      "prompt": "Try to disprove every readiness claim against the cited repository files and commands. Return JSON with accepted and reasons. This verifies preparation only and must not release anything.",
       "outputSchema": {
         "type": "object",
         "required": ["accepted", "reasons"],
@@ -84,8 +85,7 @@
   ],
   "metadata": {
     "example": true,
-    "workflow": "repository-audit",
-    "networkRequired": false,
+    "workflow": "release-preparation",
     "sideEffects": false,
     "provenance": "repository-maintained"
   }

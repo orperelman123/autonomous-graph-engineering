@@ -7,6 +7,9 @@ All notable changes are documented here.
 - Add a schema-validated `graph-engineer report` export with graph topology,
   budgets, verifier acceptance, usage, artifact digests, and structurally
   redacted lifecycle evidence.
+- Add schema- and runtime-validated workflow examples for repository audit,
+  bounded implementation, interface migration, and release preparation, with
+  explicit permissions, budgets, independent verification, and safety guidance.
 
 ## 0.3.3 - 2026-07-24
 

@@ -1,0 +1,98 @@
+{
+  "version": "1.0",
+  "id": "starter-bounded-migration",
+  "goal": "Migrate one declared repository interface while preserving compatibility requirements and independently verifying the final workspace.",
+  "originalPromptHash": "4fd719884f64bf56d9d1670c8f5ad88f687c2a75a1fe0fcd047e9bde3a3c712e",
+  "autonomy": "workspace",
+  "createdAt": "2026-07-24T00:00:00.000Z",
+  "budgets": {
+    "maxNodes": 3,
+    "maxParallel": 1,
+    "maxFanout": 1,
+    "maxDepth": 3,
+    "maxRepairRounds": 0,
+    "timeoutMs": 600000,
+    "maxEstimatedTokens": 70000,
+    "maxActualTokens": 175000
+  },
+  "nodes": [
+    {
+      "id": "inventory",
+      "label": "Inventory migration surface",
+      "kind": "agent",
+      "dependsOn": [],
+      "permission": "read",
+      "executor": "codex",
+      "prompt": "Identify the exact old and new interface, all repository-local consumers, compatibility requirements, and rollback evidence. Return JSON with oldInterface, newInterface, consumers, and invariants. Do not change files.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["oldInterface", "newInterface", "consumers", "invariants"],
+        "properties": {
+          "oldInterface": { "type": "string" },
+          "newInterface": { "type": "string" },
+          "consumers": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string" }
+          },
+          "invariants": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "id": "migrate",
+      "label": "Apply the bounded migration",
+      "kind": "agent",
+      "dependsOn": ["inventory"],
+      "permission": "write",
+      "executor": "codex",
+      "prompt": "Update only the inventoried repository-local consumers. Preserve declared compatibility and safety invariants, add regression coverage and migration notes, and return JSON with changedFiles and verificationCommands. Do not commit, push, publish, delete data, or access credentials.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["changedFiles", "verificationCommands"],
+        "properties": {
+          "changedFiles": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "type": "string" }
+          },
+          "verificationCommands": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "id": "verify",
+      "label": "Verify compatibility and scope",
+      "kind": "verifier",
+      "dependsOn": ["migrate"],
+      "permission": "read",
+      "executor": "claude",
+      "prompt": "Try to disprove that every inventoried consumer was migrated and every compatibility invariant remains true. Inspect the final diff and tests. Return JSON with accepted and reasons. Never modify files.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["accepted", "reasons"],
+        "properties": {
+          "accepted": { "type": "boolean" },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "example": true,
+    "workflow": "migration",
+    "sideEffects": "workspace-only",
+    "provenance": "repository-maintained"
+  }
+}
