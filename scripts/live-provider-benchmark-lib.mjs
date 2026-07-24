@@ -290,10 +290,27 @@ async function boundedJson(response) {
   if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
     throw new Error(`provider response exceeds ${MAX_RESPONSE_BYTES} bytes`);
   }
-  const raw = await response.text();
-  if (Buffer.byteLength(raw, "utf8") > MAX_RESPONSE_BYTES) {
-    throw new Error(`provider response exceeds ${MAX_RESPONSE_BYTES} bytes`);
+  if (!response.body) return {};
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_RESPONSE_BYTES) {
+      await reader.cancel();
+      throw new Error(`provider response exceeds ${MAX_RESPONSE_BYTES} bytes`);
+    }
+    chunks.push(value);
   }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   if (!raw) return {};
   try {
     return JSON.parse(raw);

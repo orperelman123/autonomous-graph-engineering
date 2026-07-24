@@ -1,4 +1,4 @@
-import { open, readFile, unlink } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   runLiveBenchmark,
@@ -10,6 +10,23 @@ function option(name) {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+async function replaceFile(handle, value) {
+  const bytes = Buffer.from(value, "utf8");
+  await handle.truncate(0);
+  let offset = 0;
+  while (offset < bytes.byteLength) {
+    const { bytesWritten } = await handle.write(
+      bytes,
+      offset,
+      bytes.byteLength - offset,
+      offset,
+    );
+    if (bytesWritten === 0) throw new Error("artifact write made no progress");
+    offset += bytesWritten;
+  }
+  await handle.sync();
+}
+
 const planPath = option("--plan");
 if (!planPath) {
   throw new Error("--plan <path> is required");
@@ -17,11 +34,29 @@ if (!planPath) {
 const execute = process.argv.includes("--execute");
 const confirmation = option("--confirm-budget-usd");
 const rawPlan = JSON.parse(await readFile(resolve(planPath), "utf8"));
-validateLiveBenchmarkPlan(rawPlan);
+const validated = validateLiveBenchmarkPlan(rawPlan);
 const output = option("--output");
 const target = output ? resolve(output) : undefined;
 const handle = target ? await open(target, "wx", 0o600) : undefined;
 try {
+  if (handle) {
+    await replaceFile(
+      handle,
+      `${JSON.stringify(
+        {
+          version: "1.0",
+          benchmark: "live-provider-outcome",
+          status: "execution_reserved",
+          mode: execute ? "live" : "dry_run",
+          planId: validated.plan.id,
+          planSha256: validated.planSha256,
+          reservedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  }
   const report = await runLiveBenchmark({
     plan: rawPlan,
     execute,
@@ -31,8 +66,7 @@ try {
   });
   const serialized = `${JSON.stringify(report, null, 2)}\n`;
   if (handle) {
-    await handle.writeFile(serialized, "utf8");
-    await handle.sync();
+    await replaceFile(handle, serialized);
   } else {
     process.stdout.write(serialized);
   }
@@ -40,12 +74,6 @@ try {
     report.status === "ready" || (report.status === "completed" && report.passed)
       ? 0
       : 1;
-} catch (error) {
-  if (handle && target) {
-    await handle.close();
-    await unlink(target);
-  }
-  throw error;
 } finally {
   if (handle) {
     await handle.close().catch(() => undefined);

@@ -295,6 +295,17 @@ test("bounded response parser rejects oversized provider responses", async () =>
   });
   assert.equal(report.status, "failed");
   assert.match(report.results[0].violations[0], /response exceeds/);
+
+  const streamed = await runLiveBenchmark({
+    plan: { ...plan(), providers: [plan().providers[0]] },
+    execute: true,
+    confirmedBudgetUsd: 0.01,
+    env: { OPENAI_API_KEY: "test-only" },
+    fetchImpl: async () =>
+      new Response("x".repeat(2 * 1024 * 1024 + 1), { status: 200 }),
+  });
+  assert.equal(streamed.status, "failed");
+  assert.match(streamed.results[0].violations[0], /response exceeds/);
 });
 
 test("CLI output artifacts are create-only", async () => {
@@ -321,4 +332,32 @@ test("CLI output artifacts are create-only", async () => {
     /EEXIST/,
   );
   assert.equal(await readFile(output, "utf8"), "existing\n");
+});
+
+test("CLI leaves a non-secret reservation marker when preflight fails", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "age-live-reservation-"));
+  const planPath = join(directory, "plan.json");
+  const output = join(directory, "report.json");
+  await writeFile(planPath, JSON.stringify(plan()), "utf8");
+  await assert.rejects(
+    execute(
+      process.execPath,
+      [
+        "scripts/live-provider-benchmark.mjs",
+        "--plan",
+        planPath,
+        "--output",
+        output,
+        "--execute",
+        "--confirm-budget-usd",
+        "0.01",
+      ],
+      { cwd: process.cwd(), env: {} },
+    ),
+    /OPENAI_API_KEY/,
+  );
+  const marker = JSON.parse(await readFile(output, "utf8"));
+  assert.equal(marker.status, "execution_reserved");
+  assert.equal(marker.planId, plan().id);
+  assert.equal(JSON.stringify(marker).includes("API_KEY"), false);
 });

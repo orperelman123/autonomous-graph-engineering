@@ -72,7 +72,9 @@ will not overwrite prior evidence. The plan hash uses canonical key ordering,
 so formatting and object-key order do not change its identity. Local
 `benchmark/results/` is gitignored because reports can contain full provider
 responses. Publish a deliberately reviewed and redacted copy elsewhere only
-when the study protocol requires it.
+when the study protocol requires it. The CLI fsyncs a non-secret reservation
+marker before execution; if preflight or the process fails, that marker remains
+instead of silently deleting the run's evidence.
 
 Live execution is intentionally a separate, explicit action:
 
