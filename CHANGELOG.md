@@ -4,6 +4,17 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.3.1 - 2026-07-24
+
+- Make checkpoint commits budget-atomic: retain provider usage while excluding
+  outputs rejected by the graph token budget.
+- Prevent over-budget checkpoint resumes from replaying provider work, and
+  preserve cumulative per-node usage across retryable read-only resumes.
+- Classify token exhaustion as a distinct `budget` failure and sanitize legacy
+  over-budget checkpoints when they are resumed.
+- Make the CLI honor `GRAPH_ENGINEER_AUDIT_DIRECTORY` for resumed checkpoint
+  writes as well as reads.
+
 ## 0.3.0 - 2026-07-24
 
 - Add native, fail-closed executor authorization through the official

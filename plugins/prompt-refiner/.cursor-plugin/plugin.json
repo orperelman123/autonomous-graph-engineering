@@ -1,7 +1,7 @@
 {
   "name": "prompt-refiner",
   "displayName": "Prompt Refiner + Graph Engineer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Improve requests without expanding intent, then run complex work as bounded, validated engineering graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"

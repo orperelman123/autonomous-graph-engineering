@@ -158,7 +158,7 @@ export interface NodeRunResult {
   state: NodeState;
   output?: unknown;
   error?: string;
-  failureKind?: "timeout" | "executor";
+  failureKind?: "timeout" | "budget" | "executor";
   idempotencyKey?: string;
   attemptId?: string;
   startedAt?: string;
@@ -252,4 +252,3 @@ export interface GraphEvaluationReport {
     failures: string[];
   }>;
 }
-

@@ -42,6 +42,12 @@ Every non-plan run creates:
 - `<run-id>.jsonl`: ordered append-only events;
 - `<run-id>.checkpoint.json`: atomic graph, state, outputs, usage, and reconciliation data.
 
+Checkpoint commits are budget-atomic: provider usage is retained even when an
+attempt exceeds the graph budget, but that attempt's rejected output is not
+published as a node output. Resuming an already over-budget checkpoint fails
+without replaying provider work. Failed read-only attempts below budget retain
+their usage when retried so run and node accounting remain cumulative.
+
 Resume reuses completed nodes. Interrupted read-only nodes may retry. Interrupted write, external, or destructive nodes require explicit operator reconciliation.
 Generic verifier-driven repair is limited to non-side-effecting candidates.
 Write, external, and destructive candidates require a new explicit run or
