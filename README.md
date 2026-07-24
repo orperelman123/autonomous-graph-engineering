@@ -126,6 +126,12 @@ npx graph-engineer run --autonomy read_only --executor codex --verifier claude \
   "Read package.json and report the package name with evidence"
 ```
 
+Export a path-free, structurally redacted report for a completed or failed run:
+
+```bash
+npx graph-engineer report <run-id> > portable-run-report.json
+```
+
 Install the CLIs and local plugin bundle:
 
 ```bash

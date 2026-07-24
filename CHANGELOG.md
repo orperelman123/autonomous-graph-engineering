@@ -4,6 +4,10 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add a schema-validated `graph-engineer report` export with graph topology,
+  budgets, verifier acceptance, usage, artifact digests, and structurally
+  redacted lifecycle evidence.
+
 ## 0.3.3 - 2026-07-24
 
 - Preserve clause-scoped negative constraints across comma-separated action
