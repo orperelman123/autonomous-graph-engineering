@@ -176,6 +176,7 @@ test("mocked OpenAI and Anthropic calls are sequential and costed by provider se
     maximumActive = Math.max(maximumActive, active);
     calls.push({ url: String(url), options });
     const body = responses[calls.length - 1];
+    await new Promise((resolve) => setTimeout(resolve, 5));
     active -= 1;
     return new Response(JSON.stringify(body), {
       status: 200,
