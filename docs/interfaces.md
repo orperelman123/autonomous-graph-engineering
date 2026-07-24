@@ -20,6 +20,7 @@ with a double-dash token.
 ```bash
 graph-engineer plan [--autonomy level] [--executor codex|claude|local] \
   [--verifier codex|claude|local] [--force-graph] <prompt>
+graph-engineer doctor [--json] [--root <path>] [--plugin-dir <path>]
 graph-engineer validate <graph.json>
 graph-engineer run [options] <prompt>
 graph-engineer run-file [--approve <token>] <graph.json>
@@ -89,5 +90,7 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 
 - [`prompt-refinement.schema.json`](../schemas/prompt-refinement.schema.json)
 - [`autonomous-graph.schema.json`](../schemas/autonomous-graph.schema.json)
+- [`doctor-report.schema.json`](../schemas/doctor-report.schema.json)
+- [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
 
 Runtime validation remains authoritative even when a client performs JSON Schema validation first.

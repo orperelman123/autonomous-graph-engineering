@@ -6,6 +6,8 @@ All notable changes are documented here.
 
 - Validate operator-reconciled outputs against the node's declared output schema before changing checkpoint or audit state.
 - Add a concise graph-versus-loop guide, public roadmap, proof-oriented README, and Claude Code marketplace quick start.
+- Add a deterministic environment doctor, credential-free demo, validated starter graph, and reproducible control-plane benchmark.
+- Add packaged `graph-engineer doctor`, strict doctor/benchmark report schemas, versioned benchmark fixtures, and bounded community contribution forms.
 
 - Disable generic automated repair for write, external, and destructive
   candidates; timed-out side-effecting nodes remain reconciliation-required.

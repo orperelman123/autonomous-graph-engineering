@@ -1,0 +1,38 @@
+name: Evaluation case
+description: Add a deterministic prompt or graph regression case.
+title: "[Evaluation]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Use synthetic, redacted input. Do not include credentials, private prompts, provider transcripts, checkpoints, or production targets.
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Invariant
+      description: What exact behavior should this case enforce?
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Minimal fixture
+      description: Provide synthetic input and the expected deterministic result.
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression evidence
+      description: How does the case fail before the proposed change?
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Offline constraints
+      options:
+        - label: The case requires no provider credentials or live model calls.
+          required: true
+        - label: The fixture contains no private or identifying data.
+          required: true

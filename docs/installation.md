@@ -17,6 +17,7 @@ TypeScript packages and gives the plugin absolute runtime paths.
 git clone https://github.com/orperelman123/autonomous-graph-engineering.git
 cd autonomous-graph-engineering
 npm ci
+npm run doctor
 npm run check
 npm run install:local
 npm run verify:install
@@ -31,6 +32,11 @@ The installer:
 
 Use `npm run install:local -- --plugin-dir <absolute-path-ending-in-prompt-refiner>`
 to choose another target.
+
+Run `npm run doctor` at any time for a human-readable environment report, or
+`npm run doctor -- --json` for automation. Missing optional Codex, Claude,
+build, or installed-plugin components are reported with exact remediation;
+unsupported Node versions and incorrect repository roots fail the command.
 
 ## Codex
 

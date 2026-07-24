@@ -36,7 +36,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/evaluation.test.ts test/interfaces.test.ts test/planner-validator.test.ts test/runtime.test.ts",
+    "test": "tsx --test test/doctor.test.ts test/evaluation.test.ts test/interfaces.test.ts test/planner-validator.test.ts test/runtime.test.ts",
     "eval": "tsx src/cli.ts eval"
   },
   "dependencies": {

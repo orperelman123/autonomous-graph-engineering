@@ -2,6 +2,8 @@
 
 Thank you for improving Autonomous Graph Engineering.
 
+Choose a bounded contribution type and its acceptance criteria in [Community contribution paths](docs/community-contributions.md) before opening a larger change.
+
 ## Development setup
 
 ```bash

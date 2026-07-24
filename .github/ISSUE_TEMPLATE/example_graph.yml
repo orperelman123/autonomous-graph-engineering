@@ -1,0 +1,39 @@
+name: Starter graph
+description: Propose a redacted reusable graph for a real workflow.
+title: "[Example]: "
+labels: ["documentation"]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow
+      description: What user outcome does this graph demonstrate?
+    validations:
+      required: true
+  - type: dropdown
+    id: autonomy
+    attributes:
+      label: Maximum autonomy
+      options:
+        - plan_only
+        - read_only
+        - workspace
+        - consequential
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation and tests
+      description: Include schema validation, runtime validation, and the documented commands you ran.
+    validations:
+      required: true
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: The graph contains no credentials, private prompts, transcripts, absolute user paths, or operational targets.
+          required: true
+        - label: Offline and provider-backed steps are clearly distinguished.
+          required: true

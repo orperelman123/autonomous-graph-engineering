@@ -9,13 +9,14 @@ Autonomous Graph Engineering is early and intentionally safety-first. This roadm
 - [x] MCP, CLI, and authenticated loopback HTTP interfaces
 - [x] Budgets, checkpoints, audit events, human gates, and reconciliation
 - [x] Codex plugin and Claude Code marketplace manifests
-- [ ] One-command installer and doctor for every supported agent
-- [ ] A 30-second terminal demo and copy-paste starter graph
+- [x] One-command environment doctor with machine-readable output
+- [x] A 30-second terminal demo and copy-paste starter graph
 - [ ] Clear diagnostics for missing CLIs, authentication, and MCP registration
 
 ## Next: prove outcomes
 
-- [ ] Publish a reproducible benchmark comparing direct execution, a bounded loop, and a validated graph
+- [x] Publish an offline control-plane benchmark comparing direct execution, a bounded loop, and a validated graph
+- [ ] Publish a provider-backed outcome benchmark with repeated trials and blinded grading
 - [ ] Add real-world example packs for repository audit, implementation, migration, and release preparation
 - [ ] Export a portable run report with graph, budgets, verifier result, usage, and redacted evidence
 - [ ] Test a compatibility matrix across supported Codex and Claude Code versions
@@ -28,6 +29,8 @@ Autonomous Graph Engineering is early and intentionally safety-first. This roadm
 - [ ] Additional agent adapters based on contributor demand
 
 ## Good first contributions
+
+Use the matching issue form and acceptance criteria in [Community contribution paths](docs/community-contributions.md).
 
 - Improve an error message or installation diagnostic.
 - Add a deterministic prompt-refinement evaluation case.

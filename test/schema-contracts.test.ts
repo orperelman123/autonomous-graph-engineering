@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { planGraph } from "../packages/graph-orchestrator/src/planner.js";
 import { validateGraph } from "../packages/graph-orchestrator/src/validator.js";
 import { compilePrompt } from "../packages/prompt-refiner/src/compiler.js";
+
+const execute = promisify(execFile);
 
 async function schema(name: string): Promise<Record<string, unknown>> {
   return JSON.parse(
@@ -50,5 +54,51 @@ test("public graph schema and runtime validator agree on core budgets", async ()
     validateGraph(graph).errors.some(
       (issue) => issue.code === "INVALID_PARALLEL_BUDGET",
     ),
+  );
+});
+
+test("starter repository-audit graph satisfies both public contracts", async () => {
+  const validateSchema = await validator("autonomous-graph.schema.json");
+  const graph = JSON.parse(
+    await readFile(
+      new URL("../examples/repository-audit.graph.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    validateSchema(graph),
+    true,
+    JSON.stringify(validateSchema.errors, null, 2),
+  );
+  assert.equal(validateGraph(graph).valid, true);
+});
+
+test("doctor output satisfies its strict public report schema", async () => {
+  const validate = await validator("doctor-report.schema.json");
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/doctor.mjs", "--json"],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+});
+
+test("benchmark output satisfies its strict public report schema", async () => {
+  const validate = await validator("benchmark-report.schema.json");
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/benchmark.mjs"],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
   );
 });

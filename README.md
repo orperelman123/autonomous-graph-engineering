@@ -34,7 +34,8 @@ This project implements public agent-engineering patterns. It is not represented
 git clone https://github.com/orperelman123/autonomous-graph-engineering.git
 cd autonomous-graph-engineering
 npm ci
-npm run build
+npm run doctor
+npm run demo
 
 # Preserve intent and compile a safer execution brief.
 npx prompt-refiner refine "Review auth, keep scope fixed, and verify every claim"
@@ -44,6 +45,14 @@ npx graph-engineer plan --force-graph "Audit every service and verify findings"
 ```
 
 The first command returns the original prompt hash, constraints, acceptance criteria, verification steps, and required permissions. The second returns a JSON graph with fixed budgets and the path `scope → investigate → reduce → cross-check → synthesize → acceptance`.
+
+Run the credential-free [control-plane benchmark](docs/benchmark.md):
+
+```bash
+npm run benchmark
+```
+
+It verifies how direct execution, a bounded repair loop, and a validated graph behave when the same deterministic verifier rejects the first candidate. It does not claim to measure model intelligence, quality, cost, or speed.
 
 ## Features
 
@@ -169,13 +178,13 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 69 unit, interface, and schema-contract tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) for what they prove—and what they do not.
+The current suite contains 78 unit, interface, launch-readiness, and schema-contract tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
 
 ## Contributing
 
-The project is young, so focused feedback has outsized value. Try the quick start, report the first confusing step, propose a real workflow, or take an item from the [roadmap](ROADMAP.md).
+The project is young, so focused feedback has outsized value. Try the quick start, report the first confusing step, propose a real workflow, or follow one of the bounded [community contribution paths](docs/community-contributions.md).
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports should follow [SECURITY.md](SECURITY.md), not public issues.
+Read the [roadmap](ROADMAP.md), [contributing guide](CONTRIBUTING.md), [governance](GOVERNANCE.md), and [support policy](SUPPORT.md). Security reports should follow [SECURITY.md](SECURITY.md), not public issues.
 
 ## License
 

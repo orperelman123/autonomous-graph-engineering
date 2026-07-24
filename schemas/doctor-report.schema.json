@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/doctor-report.schema.json",
+  "title": "Graph Engineer Doctor Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "status", "root", "pluginDirectory", "checks", "summary"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "status": { "enum": ["ready", "blocked"] },
+    "root": { "type": "string", "minLength": 1 },
+    "pluginDirectory": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "required", "passed", "message"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+          "required": { "type": "boolean" },
+          "passed": { "type": "boolean" },
+          "message": { "type": "string", "minLength": 1 },
+          "remediation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "warnings", "failures"],
+      "properties": {
+        "passed": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "failures": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
