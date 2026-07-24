@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
-import {
-  ClaudeCliExecutor,
-  CodexCliExecutor,
-  LocalEchoExecutor,
-} from "./executors.js";
 import { runGraphEvaluation } from "./evaluation.js";
 import { planGraph } from "./planner.js";
 import { runGraph } from "./runtime.js";
+import { defaultExecutors } from "./security.js";
 import type {
   GraphRunResult,
   GraphSpec,
@@ -43,11 +39,7 @@ function jobLimit(): number {
 }
 
 function makeExecutors() {
-  return {
-    codex: new CodexCliExecutor(),
-    claude: new ClaudeCliExecutor(),
-    local: new LocalEchoExecutor(),
-  };
+  return defaultExecutors();
 }
 
 function pruneCompletedJobs(): void {
@@ -209,7 +201,7 @@ async function handle(request: Request): Promise<void> {
         (request.params?.protocolVersion as string | undefined) ??
         "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "graph-engineer", version: "0.2.0" },
+      serverInfo: { name: "graph-engineer", version: "0.3.0" },
       instructions:
         "Plan first. Validate every graph. Never expand permissions. Require human gates for consequential actions.",
     });

@@ -4,6 +4,18 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-24
+
+- Add native, fail-closed executor authorization through the official
+  `@atbash/sdk` package as an exact optional dependency.
+- Add a vendor-neutral external security-provider module contract.
+- Send only bounded metadata and SHA-256 hashes across the authorization
+  boundary, excluding raw prompts, inputs, paths, and idempotency keys.
+- Deny executor invocation when provider import, configuration, network,
+  timeout, response validation, hold, or block checks fail.
+- Keep the proprietary SDK as a separate dependency rather than copying or
+  bundling its implementation into this project.
+
 ## 0.2.0 - 2026-07-24
 
 - Add a versioned GitHub Copilot marketplace manifest and an evidence-gated

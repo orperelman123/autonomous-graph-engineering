@@ -1,6 +1,6 @@
 {
   "name": "@autonomous-graph-engineering/graph-engineer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Permission-safe autonomous graph orchestration for Codex and Claude Code.",
   "license": "MIT",
   "repository": {
@@ -36,16 +36,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/doctor.test.ts test/evaluation.test.ts test/interfaces.test.ts test/planner-validator.test.ts test/runtime.test.ts",
+    "test": "tsx --test test/doctor.test.ts test/evaluation.test.ts test/interfaces.test.ts test/planner-validator.test.ts test/runtime.test.ts test/security.test.ts",
     "eval": "tsx src/cli.ts eval"
   },
   "dependencies": {
-    "@autonomous-graph-engineering/prompt-refiner": "0.2.0"
+    "@autonomous-graph-engineering/prompt-refiner": "0.3.0"
   },
   "engines": {
     "node": ">=20"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "optionalDependencies": {
+    "@atbash/sdk": "0.6.0"
   }
 }

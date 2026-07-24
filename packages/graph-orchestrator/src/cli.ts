@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import {
-  ClaudeCliExecutor,
-  CodexCliExecutor,
-  LocalEchoExecutor,
-} from "./executors.js";
 import { renderDoctorReport, runDoctor } from "./doctor.js";
 import { runGraphEvaluation } from "./evaluation.js";
 import { gradeCheckpoint } from "./grader.js";
@@ -17,6 +12,7 @@ import {
   gradeSemanticCheckpoint,
   loadSemanticCases,
 } from "./semantic-grader.js";
+import { defaultExecutors } from "./security.js";
 import { planGraph } from "./planner.js";
 import { runGraph } from "./runtime.js";
 import { startGraphServer } from "./server.js";
@@ -258,11 +254,7 @@ async function main(): Promise<void> {
     usage();
   }
   const result = await runGraph(graph, {
-    executors: {
-      codex: new CodexCliExecutor(),
-      claude: new ClaudeCliExecutor(),
-      local: new LocalEchoExecutor(),
-    },
+    executors: defaultExecutors(),
     approvals,
     ...(resume ? { resume } : {}),
   });

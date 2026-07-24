@@ -9,6 +9,7 @@
 - Human approvals and reconciliation attestations
 - Audit and checkpoint integrity
 - Token and cost budgets
+- Private [external authorization providers](external-security-provider.md)
 
 ## Trust boundaries
 

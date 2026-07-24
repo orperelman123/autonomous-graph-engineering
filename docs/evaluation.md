@@ -3,9 +3,9 @@
 ## Current deterministic coverage
 
 - Prompt Refiner: 21 unit/interface tests and 27 evaluation cases
-- Graph Engineer: 52 unit/interface tests and 20 adversarial evaluation cases
+- Graph Engineer: 62 unit/interface tests and 20 adversarial evaluation cases
 - Repository integration, launch-readiness, plugin, and schema contracts: 18 tests
-- Total automated tests: 91
+- Total automated tests: 101
 - Repository semantic corpus: 2 cases
 - Strict TypeScript compilation
 - Package dry-run checks, link validation, and secret scanning in CI
