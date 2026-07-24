@@ -142,6 +142,7 @@ instead of being executed through a shell.
 
 ## Next steps
 
+- Workflow examples: [repository audit, implementation, migration, and release preparation](../examples/README.md)
 - Developers: [developer guide](development.md)
 - Architecture: [architecture](architecture.md)
 - CLI, MCP, HTTP, and schemas: [interfaces](interfaces.md)

@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "id": "starter-bounded-implementation",
+  "goal": "Implement one bounded repository change from explicit acceptance criteria, then independently verify the resulting workspace diff.",
+  "originalPromptHash": "068a7375ae49092e81585960ea8aa42755ec1afcf226a6bb3aa255831dd750aa",
+  "autonomy": "workspace",
+  "createdAt": "2026-07-24T00:00:00.000Z",
+  "budgets": {
+    "maxNodes": 3,
+    "maxParallel": 1,
+    "maxFanout": 1,
+    "maxDepth": 3,
+    "maxRepairRounds": 0,
+    "timeoutMs": 600000,
+    "maxEstimatedTokens": 60000,
+    "maxActualTokens": 150000
+  },
+  "nodes": [
+    {
+      "id": "scope",
+      "label": "Bound the implementation",
+      "kind": "agent",
+      "dependsOn": [],
+      "permission": "read",
+      "executor": "codex",
+      "prompt": "Read the repository guidance and requested acceptance criteria. Return JSON with at most five intendedFiles and at most five acceptanceCriteria. Reject any requirement that needs credentials, external actions, or destructive changes.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["intendedFiles", "acceptanceCriteria"],
+        "properties": {
+          "intendedFiles": {
+            "type": "array",
+            "maxItems": 5,
+            "items": { "type": "string" }
+          },
+          "acceptanceCriteria": {
+            "type": "array",
+            "maxItems": 5,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "id": "implement",
+      "label": "Implement the bounded change",
+      "kind": "agent",
+      "dependsOn": ["scope"],
+      "permission": "write",
+      "executor": "codex",
+      "prompt": "Implement only the approved files and acceptance criteria. Add focused tests, preserve existing safety controls, and return JSON with changedFiles, testsAdded, and verificationCommands. Do not commit, push, publish, or access credentials.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["changedFiles", "testsAdded", "verificationCommands"],
+        "properties": {
+          "changedFiles": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string" }
+          },
+          "testsAdded": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string" }
+          },
+          "verificationCommands": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "id": "verify",
+      "label": "Independently verify the diff",
+      "kind": "verifier",
+      "dependsOn": ["implement"],
+      "permission": "read",
+      "executor": "claude",
+      "prompt": "Inspect the workspace diff, focused tests, and acceptance criteria. Try to disprove correctness and scope compliance. Return JSON with accepted and reasons. Never modify files.",
+      "outputSchema": {
+        "type": "object",
+        "required": ["accepted", "reasons"],
+        "properties": {
+          "accepted": { "type": "boolean" },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "example": true,
+    "workflow": "implementation",
+    "sideEffects": "workspace-only",
+    "provenance": "repository-maintained"
+  }
+}
