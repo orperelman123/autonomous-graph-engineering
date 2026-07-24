@@ -27,7 +27,8 @@ graph-engineer run-file [--approve <token>] <graph.json>
 graph-engineer resume [--approve <token>] <run-id>
 graph-engineer inspect <run-id>
 graph-engineer reconcile <run-id> <node-id> --token <token> \
-  --outcome completed|not_applied --evidence <text> [--output-json <json>]
+  --outcome completed|not_applied --evidence <text> [--output-json <json>] \
+  [--termination-json <json>]
 graph-engineer grade <run-id>
 graph-engineer semantic-grade <run-id> <corpus.json> <case-id>
 graph-engineer eval
@@ -35,6 +36,14 @@ graph-engineer serve [port]
 ```
 
 Autonomy levels are `plan_only`, `read_only`, `workspace`, and `consequential`.
+
+Side-effecting executor requests carry a stable `idempotencyKey` for the logical
+node and a unique `attemptId` for the concrete invocation. A timeout is an
+ambiguous outcome, not proof that the subprocess made no change. Reconciling a
+timed-out node as `not_applied` therefore requires structured termination
+evidence whose attempt ID and executor match the checkpoint. This evidence is
+operator-supplied and auditable; exactly-once behavior still depends on the
+downstream executor honoring the idempotency key.
 
 ## MCP
 
@@ -92,5 +101,6 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 - [`autonomous-graph.schema.json`](../schemas/autonomous-graph.schema.json)
 - [`doctor-report.schema.json`](../schemas/doctor-report.schema.json)
 - [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
+- [`provider-benchmark-report.schema.json`](../schemas/provider-benchmark-report.schema.json)
 
 Runtime validation remains authoritative even when a client performs JSON Schema validation first.

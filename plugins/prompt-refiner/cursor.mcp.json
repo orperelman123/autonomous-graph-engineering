@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "prompt-refiner": {
+      "command": "node",
+      "args": ["${CURSOR_PLUGIN_ROOT}/runtime/mcp-server.js"],
+      "env": {
+        "PROMPT_REFINER_PROVIDER": "none"
+      }
+    },
+    "graph-engineer": {
+      "command": "node",
+      "args": ["${CURSOR_PLUGIN_ROOT}/graph-runtime/mcp-server.js"]
+    }
+  }
+}

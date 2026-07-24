@@ -71,6 +71,28 @@ test("offline control-plane benchmark is reproducible", async () => {
   );
 });
 
+test("offline provider-envelope benchmark is reproducible", async () => {
+  const first = await execute(process.execPath, ["scripts/provider-benchmark.mjs"], {
+    cwd: process.cwd(),
+  });
+  const second = await execute(process.execPath, ["scripts/provider-benchmark.mjs"], {
+    cwd: process.cwd(),
+  });
+  assert.equal(first.stdout, second.stdout);
+  const report = JSON.parse(first.stdout) as {
+    passed: boolean;
+    cases: Array<{ provider: string; passed: boolean }>;
+  };
+  assert.equal(report.passed, true);
+  assert.deepEqual(
+    report.cases.map(({ provider, passed }) => ({ provider, passed })),
+    [
+      { provider: "codex", passed: true },
+      { provider: "claude", passed: true },
+    ],
+  );
+});
+
 test("demo produces a validated graph without provider credentials", async () => {
   const { stdout } = await execute(process.execPath, ["scripts/demo.mjs"], {
     cwd: process.cwd(),

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/provider-benchmark-report.schema.json",
+  "title": "Offline Provider Envelope Compatibility Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "benchmark", "fixture", "scope", "passed", "cases"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "benchmark": { "const": "offline-provider-envelope-compatibility" },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "sha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "passed": { "type": "boolean" },
+    "cases": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "passed", "actual", "expected"],
+        "properties": {
+          "provider": { "enum": ["codex", "claude"] },
+          "passed": { "type": "boolean" },
+          "actual": { "type": "object" },
+          "expected": { "type": "object" }
+        }
+      }
+    }
+  }
+}

@@ -35,6 +35,9 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Generic automated repair cannot execute with write, external, or destructive
   permission. A timed-out side-effecting node is treated as uncertain and must
   be reconciled before resume.
+- Side-effecting requests include a stable logical idempotency key and a unique
+  attempt identifier. Executors are instructed to reuse the key, but the
+  runtime cannot guarantee that an external system enforces it.
 
 ### Execution isolation
 
@@ -51,6 +54,8 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Ambiguous side-effecting nodes fail closed.
 - Reconciliation tokens bind the run, graph fingerprint, and node.
 - Reconciliation requires explicit evidence and is recorded in the audit.
+- Marking a timed-out side effect `not_applied` additionally requires
+  structured termination evidence bound to the recorded attempt and executor.
 
 ### HTTP
 
@@ -67,6 +72,8 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Workspace-write subprocesses can modify any file permitted by the underlying sandbox.
 - Model verification can be wrong or collusive; semantic correctness still requires domain-specific evaluation.
 - Provider CLI output contracts may change.
+- Termination evidence is an operator attestation, not cryptographic proof of
+  remote-system state.
 - Checkpoint atomicity does not make JSONL and checkpoint writes one transactional unit.
 
 ## Deployment guidance

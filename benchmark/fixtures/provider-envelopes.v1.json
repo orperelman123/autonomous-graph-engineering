@@ -1,0 +1,39 @@
+{
+  "id": "provider-envelope-contracts",
+  "version": 1,
+  "cases": [
+    {
+      "provider": "codex",
+      "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"fixture\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"{\\\"accepted\\\":true,\\\"evidence\\\":[\\\"fixture\\\"]}\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":120,\"cached_input_tokens\":20,\"output_tokens\":30,\"reasoning_output_tokens\":5}}\n",
+      "expected": {
+        "output": {
+          "accepted": true,
+          "evidence": ["fixture"]
+        },
+        "usage": {
+          "inputTokens": 120,
+          "cachedInputTokens": 20,
+          "outputTokens": 30,
+          "reasoningOutputTokens": 5
+        }
+      }
+    },
+    {
+      "provider": "claude",
+      "stdout": "{\"result\":\"{\\\"accepted\\\":true,\\\"evidence\\\":[\\\"fixture\\\"]}\",\"total_cost_usd\":0.0123,\"usage\":{\"input_tokens\":80,\"cache_read_input_tokens\":15,\"cache_creation_input_tokens\":5,\"output_tokens\":25}}",
+      "expected": {
+        "output": {
+          "accepted": true,
+          "evidence": ["fixture"]
+        },
+        "usage": {
+          "inputTokens": 100,
+          "cachedInputTokens": 15,
+          "cacheCreationInputTokens": 5,
+          "outputTokens": 25,
+          "costUsd": 0.0123
+        }
+      }
+    }
+  ]
+}

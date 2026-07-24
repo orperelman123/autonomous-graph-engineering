@@ -13,16 +13,29 @@ export interface DoctorCheck {
 }
 
 export interface DoctorReport {
-  version: "1.0";
+  version: "1.1";
   status: "ready" | "blocked";
   root: string;
   pluginDirectory: string;
   checks: DoctorCheck[];
+  hosts: HostDiagnostic[];
   summary: {
     passed: number;
     warnings: number;
     failures: number;
   };
+}
+
+export type HostName = "codex" | "claude" | "cursor" | "copilot";
+export type DiagnosticSignal = "verified" | "missing" | "unknown";
+
+export interface HostDiagnostic {
+  host: HostName;
+  command: string;
+  available: boolean;
+  authentication: DiagnosticSignal;
+  mcpRegistration: DiagnosticSignal;
+  detail: string;
 }
 
 export interface DoctorOptions {
@@ -32,6 +45,11 @@ export interface DoctorOptions {
   exists?: (path: string) => Promise<boolean>;
   readJson?: (path: string) => Promise<unknown>;
   commandAvailable?: (command: string) => boolean;
+  hostProbe?: (
+    host: HostName,
+  ) => Promise<
+    Pick<HostDiagnostic, "authentication" | "mcpRegistration" | "detail">
+  >;
 }
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -206,17 +224,59 @@ export async function runDoctor(
     ),
   );
 
-  for (const command of ["codex", "claude"]) {
+  const hostCommands: Array<[HostName, string]> = [
+    ["codex", "codex"],
+    ["claude", "claude"],
+    ["cursor", "cursor-agent"],
+    ["copilot", "copilot"],
+  ];
+  const hosts: HostDiagnostic[] = [];
+  for (const [host, command] of hostCommands) {
     const available = commandAvailable(command);
     checks.push(
       check(
-        `${command}-cli`,
+        `${host}-cli`,
         false,
         available,
         available ? `${command} CLI is available` : `${command} CLI not found`,
-        `Install and authenticate the ${command} CLI if you want to use that executor.`,
+        `Install ${command} if you want to use the ${host} adapter.`,
       ),
     );
+    if (!available) {
+      hosts.push({
+        host,
+        command,
+        available: false,
+        authentication: "unknown",
+        mcpRegistration: "unknown",
+        detail: "CLI unavailable; authentication and MCP registration were not probed.",
+      });
+      continue;
+    }
+    if (!options.hostProbe) {
+      hosts.push({
+        host,
+        command,
+        available: true,
+        authentication: "unknown",
+        mcpRegistration: "unknown",
+        detail:
+          "CLI detected. Authentication and MCP registration remain unknown because doctor avoids implicit host or network calls.",
+      });
+      continue;
+    }
+    try {
+      hosts.push({ host, command, available: true, ...(await options.hostProbe(host)) });
+    } catch (error) {
+      hosts.push({
+        host,
+        command,
+        available: true,
+        authentication: "unknown",
+        mcpRegistration: "unknown",
+        detail: `Host probe failed safely: ${(error as Error).message}`,
+      });
+    }
   }
 
   const requiredFailures = checks.filter(
@@ -224,11 +284,12 @@ export async function runDoctor(
   );
   const warnings = checks.filter((item) => !item.required && !item.passed);
   return {
-    version: "1.0",
+    version: "1.1",
     status: requiredFailures.length === 0 ? "ready" : "blocked",
     root,
     pluginDirectory,
     checks,
+    hosts,
     summary: {
       passed: checks.filter((item) => item.passed).length,
       warnings: warnings.length,
@@ -243,6 +304,11 @@ export function renderDoctorReport(report: DoctorReport): string {
     const marker = item.passed ? "PASS" : item.required ? "FAIL" : "WARN";
     lines.push(`[${marker}] ${item.message}`);
     if (item.remediation) lines.push(`       ${item.remediation}`);
+  }
+  for (const host of report.hosts) {
+    lines.push(
+      `[HOST] ${host.host}: auth=${host.authentication}, mcp=${host.mcpRegistration} (${host.detail})`,
+    );
   }
   lines.push(
     `${report.summary.passed} passed, ${report.summary.warnings} warnings, ${report.summary.failures} failures`,

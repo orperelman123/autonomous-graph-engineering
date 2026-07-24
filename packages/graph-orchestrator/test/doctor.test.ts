@@ -15,7 +15,9 @@ function fixture(overrides: {
   pluginValid?: boolean;
   pathsExist?: boolean;
 } = {}) {
-  const commands = new Set(overrides.commands ?? ["npm", "codex", "claude"]);
+  const commands = new Set(
+    overrides.commands ?? ["npm", "codex", "claude", "cursor-agent", "copilot"],
+  );
   const pluginValid = overrides.pluginValid ?? true;
   const pathsExist = overrides.pathsExist ?? true;
   return runDoctor({
@@ -53,7 +55,7 @@ test("doctor fixture is deterministic and ready without provider credentials", a
   assert.deepEqual(first, second);
   assert.equal(first.status, "ready");
   assert.equal(first.summary.failures, 0);
-  assert.equal(first.summary.warnings, 2);
+  assert.equal(first.summary.warnings, 4);
   assert.deepEqual(
     first.checks.map((check) => check.id),
     [
@@ -64,6 +66,21 @@ test("doctor fixture is deterministic and ready without provider credentials", a
       "local-plugin",
       "codex-cli",
       "claude-cli",
+      "cursor-cli",
+      "copilot-cli",
+    ],
+  );
+  assert.deepEqual(
+    first.hosts.map(({ host, authentication, mcpRegistration }) => ({
+      host,
+      authentication,
+      mcpRegistration,
+    })),
+    [
+      { host: "codex", authentication: "unknown", mcpRegistration: "unknown" },
+      { host: "claude", authentication: "unknown", mcpRegistration: "unknown" },
+      { host: "cursor", authentication: "unknown", mcpRegistration: "unknown" },
+      { host: "copilot", authentication: "unknown", mcpRegistration: "unknown" },
     ],
   );
 });
@@ -88,4 +105,44 @@ test("doctor human renderer has stable severity and remediation", async () => {
   assert.match(rendered, /\[FAIL\] Node\.js 18\.20\.0/);
   assert.match(rendered, /\[FAIL\] npm CLI not found/);
   assert.match(rendered, /\[WARN\] codex CLI not found/);
+  assert.match(rendered, /\[HOST\] cursor: auth=unknown, mcp=unknown/);
+});
+
+test("doctor reports injected host evidence without inferring it from availability", async () => {
+  const report = await runDoctor({
+    root,
+    pluginDirectory,
+    nodeVersion: "20.20.0",
+    commandAvailable: (command) => ["npm", "copilot"].includes(command),
+    exists: async () => true,
+    readJson: async (path) => {
+      if (path.endsWith("package.json")) {
+        return { name: "autonomous-graph-engineering" };
+      }
+      return {
+        mcpServers: {
+          "prompt-refiner": {
+            command: "node",
+            args: [join(pluginDirectory, "runtime", "mcp-server.js")],
+          },
+          "graph-engineer": {
+            command: "node",
+            args: [join(pluginDirectory, "graph-runtime", "mcp-server.js")],
+          },
+        },
+      };
+    },
+    hostProbe: async (host) => ({
+      authentication: host === "copilot" ? "verified" : "unknown",
+      mcpRegistration: host === "copilot" ? "verified" : "unknown",
+      detail: "fixture evidence",
+    }),
+  });
+  const copilot = report.hosts.find((host) => host.host === "copilot");
+  assert.equal(copilot?.authentication, "verified");
+  assert.equal(copilot?.mcpRegistration, "verified");
+  assert.equal(
+    report.hosts.find((host) => host.host === "codex")?.authentication,
+    "unknown",
+  );
 });

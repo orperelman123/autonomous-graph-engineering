@@ -107,6 +107,8 @@ export interface AgentExecutionRequest {
   outputSchema?: Record<string, unknown>;
   cwd: string;
   timeoutMs: number;
+  idempotencyKey?: string;
+  attemptId?: string;
   iteration?: number;
   signal?: AbortSignal;
 }
@@ -156,6 +158,9 @@ export interface NodeRunResult {
   state: NodeState;
   output?: unknown;
   error?: string;
+  failureKind?: "timeout" | "executor";
+  idempotencyKey?: string;
+  attemptId?: string;
   startedAt?: string;
   completedAt?: string;
   usage?: TokenUsage;
@@ -200,11 +205,21 @@ export interface GraphRunCheckpoint {
   reconciliations?: ReconciliationRecord[];
 }
 
+export interface TerminationEvidence {
+  attemptId: string;
+  executor: string;
+  observedAt: string;
+  method: string;
+  status: "terminated";
+}
+
 export interface ReconciliationRecord {
   nodeId: string;
   outcome: "completed" | "not_applied";
   evidence: string;
   token: string;
+  idempotencyKey?: string;
+  terminationEvidence?: TerminationEvidence;
   createdAt: string;
 }
 

@@ -14,7 +14,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/orperelman123/autonomous-graph-engineering?style=social)](https://github.com/orperelman123/autonomous-graph-engineering/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An open-source TypeScript runtime and plugin for Codex and Claude Code. It preserves the user's original request, decomposes broad work into a validated DAG, runs isolated workers, cross-checks results, caps repair, and stops for human approval before consequential actions.
+An open-source TypeScript runtime and plugin for Codex, Claude Code, Cursor, and GitHub Copilot. It preserves the user's original request, decomposes broad work into a validated DAG, runs isolated workers, cross-checks results, caps repair, and stops for human approval before consequential actions.
 
 ## The problem it solves
 
@@ -60,6 +60,8 @@ It verifies how direct execution, a bounded repair loop, and a validated graph b
 - Optional OpenAI or Anthropic semantic refinement
 - Direct routing for focused work and DAG routing for complex work
 - Codex and Claude Code executors with isolated child context
+- Native Cursor plugin metadata and always-on refinement rule
+- Native GitHub Copilot CLI plugin with deterministic prompt transformation
 - Global concurrency, fan-out, timeout, output, token, and repair budgets
 - Output-schema enforcement and independent verification
 - Append-only JSONL audit events
@@ -117,7 +119,20 @@ Install the CLIs and local plugin bundle:
 npm run install:local
 ```
 
-Then follow the [Codex and Claude Code installation guide](docs/installation.md).
+Then follow the [four-host installation guide](docs/installation.md).
+
+Prepare a native local bundle for Cursor or GitHub Copilot CLI:
+
+```bash
+npm run install:cursor
+npm run install:copilot
+```
+
+Cursor uses an always-on rule because its current pre-submit hook can allow or
+block a request but cannot replace it. GitHub Copilot CLI uses the
+`userPromptTransformed` hook and therefore receives the deterministic improved
+brief automatically. The same shared skills and MCP servers are packaged for
+both hosts.
 
 For Claude Code, the repository is also a plugin marketplace:
 
@@ -156,7 +171,7 @@ See [Architecture](docs/architecture.md), [Installation](docs/installation.md), 
 packages/
   prompt-refiner/       Intent-preserving compiler, MCP, HTTP, and CLI
   graph-orchestrator/   Planner, validator, runtime, executors, checkpoints
-plugins/prompt-refiner/ Portable Codex and Claude plugin sources
+plugins/prompt-refiner/ Portable Codex, Claude, Cursor, and Copilot plugin sources
 schemas/                Public JSON contracts
 config/                 Safe example configuration and semantic corpus
 docs/                   Architecture, security, interfaces, and evaluation

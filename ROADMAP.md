@@ -6,20 +6,22 @@ Autonomous Graph Engineering is early and intentionally safety-first. This roadm
 
 - [x] Deterministic prompt refinement and graph planning
 - [x] Codex and Claude Code executors
+- [x] Native plugin adapters for Cursor and GitHub Copilot CLI
 - [x] MCP, CLI, and authenticated loopback HTTP interfaces
 - [x] Budgets, checkpoints, audit events, human gates, and reconciliation
 - [x] Codex plugin and Claude Code marketplace manifests
 - [x] One-command environment doctor with machine-readable output
 - [x] A 30-second terminal demo and copy-paste starter graph
-- [ ] Clear diagnostics for missing CLIs, authentication, and MCP registration
+- [x] Tri-state diagnostics for CLIs, authentication, and MCP registration
 
 ## Next: prove outcomes
 
 - [x] Publish an offline control-plane benchmark comparing direct execution, a bounded loop, and a validated graph
+- [x] Publish an offline Codex/Claude provider-envelope compatibility benchmark
 - [ ] Publish a provider-backed outcome benchmark with repeated trials and blinded grading
 - [ ] Add real-world example packs for repository audit, implementation, migration, and release preparation
 - [ ] Export a portable run report with graph, budgets, verifier result, usage, and redacted evidence
-- [ ] Test a compatibility matrix across supported Codex and Claude Code versions
+- [ ] Test a compatibility matrix across Codex, Claude Code, Cursor, and GitHub Copilot versions
 
 ## Later: grow the ecosystem safely
 

@@ -23,6 +23,7 @@ export {
   runGraph,
 } from "./runtime.js";
 export {
+  executionIdempotencyKey,
   reconcileCheckpoint,
   reconciliationNeeds,
   reconciliationToken,
@@ -57,6 +58,7 @@ export type {
   PlanGraphRequest,
   RepairPolicy,
   ReconciliationRecord,
+  TerminationEvidence,
   RunGraphOptions,
   TokenUsage,
   ValidationIssue,

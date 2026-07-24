@@ -36,7 +36,7 @@ function usage(): never {
   graph-engineer run-file [--approve graph-id:fingerprint:gate-id] <graph.json>
   graph-engineer resume [--approve graph-id:fingerprint:gate-id] <run-id>
   graph-engineer inspect <run-id>
-  graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>]
+  graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>] [--termination-json <json>]
   graph-engineer grade <run-id>
   graph-engineer semantic-grade <run-id> <corpus.json> <case-id>
   graph-engineer eval
@@ -157,6 +157,7 @@ async function main(): Promise<void> {
     const outcome = option(args, "--outcome");
     const evidence = option(args, "--evidence");
     const outputJson = option(args, "--output-json");
+    const terminationJson = option(args, "--termination-json");
     if (
       !runId ||
       !nodeId ||
@@ -176,6 +177,17 @@ async function main(): Promise<void> {
       evidence,
       ...(outputJson !== undefined
         ? { output: JSON.parse(outputJson) as unknown }
+        : {}),
+      ...(terminationJson !== undefined
+        ? {
+            terminationEvidence: JSON.parse(terminationJson) as {
+              attemptId: string;
+              executor: string;
+              observedAt: string;
+              method: string;
+              status: "terminated";
+            },
+          }
         : {}),
     });
     process.stdout.write(

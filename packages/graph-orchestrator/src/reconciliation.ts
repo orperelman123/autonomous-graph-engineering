@@ -4,6 +4,7 @@ import type {
   GraphRunCheckpoint,
   NodePermission,
   ReconciliationRecord,
+  TerminationEvidence,
 } from "./types.js";
 
 const SIDE_EFFECTING = new Set<NodePermission>([
@@ -20,9 +21,23 @@ export function reconciliationToken(
   return `reconcile:${runId}:${graphHash.slice(0, 16)}:${nodeId}`;
 }
 
+export function executionIdempotencyKey(
+  runId: string,
+  nodeId: string,
+): string {
+  return `graph:${runId}:node:${nodeId}`;
+}
+
 export function reconciliationNeeds(
   checkpoint: GraphRunCheckpoint,
-): Array<{ nodeId: string; token: string; state: string }> {
+): Array<{
+  nodeId: string;
+  token: string;
+  state: string;
+  idempotencyKey: string;
+  attemptId?: string;
+  requiresTerminationConfirmation: boolean;
+}> {
   const byId = new Map(checkpoint.graph.nodes.map((node) => [node.id, node]));
   return Object.values(checkpoint.nodes)
     .filter((state) => {
@@ -36,6 +51,11 @@ export function reconciliationNeeds(
     .map((state) => ({
       nodeId: state.nodeId,
       state: state.state,
+      idempotencyKey:
+        state.idempotencyKey ??
+        executionIdempotencyKey(checkpoint.runId, state.nodeId),
+      ...(state.attemptId ? { attemptId: state.attemptId } : {}),
+      requiresTerminationConfirmation: state.failureKind === "timeout",
       token: reconciliationToken(
         checkpoint.runId,
         checkpoint.graphHash,
@@ -52,6 +72,7 @@ export async function reconcileCheckpoint(input: {
   outcome: "completed" | "not_applied";
   evidence: string;
   output?: unknown;
+  terminationEvidence?: TerminationEvidence;
   now?: () => Date;
 }): Promise<GraphRunCheckpoint> {
   const now = input.now ?? (() => new Date());
@@ -76,10 +97,33 @@ export async function reconcileCheckpoint(input: {
   if (input.outcome === "completed" && input.output === undefined) {
     throw new Error("completed reconciliation requires --output-json");
   }
+  if (
+    input.outcome === "not_applied" &&
+    need.requiresTerminationConfirmation &&
+    !input.terminationEvidence
+  ) {
+    throw new Error(
+      "timed-out side-effect reconciliation requires --termination-json with matching executor termination evidence",
+    );
+  }
   const node = checkpoint.graph.nodes.find(
     (candidate) => candidate.id === input.nodeId,
   );
   if (!node) throw new Error(`graph node missing: ${input.nodeId}`);
+  if (input.terminationEvidence) {
+    const termination = input.terminationEvidence;
+    if (
+      termination.status !== "terminated" ||
+      !termination.method.trim() ||
+      !Number.isFinite(Date.parse(termination.observedAt)) ||
+      termination.attemptId !== need.attemptId ||
+      termination.executor !== node.executor
+    ) {
+      throw new Error(
+        "termination evidence must match the timed-out attempt and executor",
+      );
+    }
+  }
   const output =
     input.outcome === "completed"
       ? validatedOutput(node, input.output)
@@ -92,6 +136,10 @@ export async function reconcileCheckpoint(input: {
     outcome: input.outcome,
     evidence,
     token: input.token,
+    idempotencyKey: need.idempotencyKey,
+    ...(input.terminationEvidence
+      ? { terminationEvidence: input.terminationEvidence }
+      : {}),
     createdAt,
   };
   if (input.outcome === "completed") {
@@ -99,11 +147,13 @@ export async function reconcileCheckpoint(input: {
     state.output = output;
     state.completedAt = createdAt;
     delete state.error;
+    delete state.failureKind;
     checkpoint.outputs[input.nodeId] = output;
   } else {
     state.state = "pending";
     delete state.output;
     delete state.error;
+    delete state.failureKind;
     delete state.startedAt;
     delete state.completedAt;
     delete state.usage;
@@ -128,6 +178,10 @@ export async function reconcileCheckpoint(input: {
       data: {
         outcome: input.outcome,
         evidence,
+        idempotencyKey: need.idempotencyKey,
+        ...(input.terminationEvidence
+          ? { terminationEvidence: input.terminationEvidence }
+          : {}),
         ...(input.outcome === "completed" ? { output } : {}),
       },
     },

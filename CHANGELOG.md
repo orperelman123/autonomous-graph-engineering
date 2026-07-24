@@ -4,6 +4,17 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add native Cursor and GitHub Copilot CLI plugin manifests, shared skills, MCP
+  configuration, a Cursor always-on rule, and a Copilot prompt-transformation
+  hook with `!raw` bypass.
+- Add transactional plugin-bundle activation with rollback, atomic install
+  locking, and regression tests.
+- Add stable side-effect idempotency keys, unique attempt identifiers, timeout
+  classification, and attempt-bound termination evidence for reconciliation.
+- Add four-host tri-state diagnostics that do not confuse CLI discovery with
+  verified authentication or MCP registration.
+- Add a reproducible offline Codex/Claude provider-envelope compatibility
+  benchmark and strict public report schema.
 - Validate operator-reconciled outputs against the node's declared output schema before changing checkpoint or audit state.
 - Add a concise graph-versus-loop guide, public roadmap, proof-oriented README, and Claude Code marketplace quick start.
 - Add a deterministic environment doctor, credential-free demo, validated starter graph, and reproducible control-plane benchmark.

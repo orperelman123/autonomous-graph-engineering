@@ -102,3 +102,18 @@ test("benchmark output satisfies its strict public report schema", async () => {
     JSON.stringify(validate.errors, null, 2),
   );
 });
+
+test("provider-envelope benchmark satisfies its strict public report schema", async () => {
+  const validate = await validator("provider-benchmark-report.schema.json");
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/provider-benchmark.mjs"],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+});

@@ -29,3 +29,21 @@ This is a deterministic control-plane regression benchmark. It does not measure:
 - OpenAI, Anthropic, or any other private production architecture.
 
 A future provider-backed benchmark should use a preregistered task corpus, repeated trials, fixed models, blinded grading, safety cases, token and cost accounting, and published raw results. Until that exists, this repository should not advertise model-quality or cost improvements.
+
+## Offline provider-envelope compatibility
+
+Run:
+
+```bash
+npm run benchmark:providers:offline
+```
+
+This second reproducible benchmark feeds pinned synthetic Codex JSONL and Claude
+JSON envelopes through the production parsers. Its strict-schema report records
+the fixture digest and normalized outputs and usage. It uses no credentials and
+makes no network requests.
+
+This is a provider-adapter contract test, not a live provider benchmark. A live
+outcome study still requires explicit approval because it can consume paid
+provider capacity; it should preregister tasks, models, repetitions, blinded
+graders, safety cases, and reporting before execution.

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptTransformed": [
+      {
+        "type": "command",
+        "command": "node \"${PLUGIN_ROOT}/hooks/copilot-prompt-refiner-hook.mjs\"",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

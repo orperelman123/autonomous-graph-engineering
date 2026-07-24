@@ -443,7 +443,7 @@ test("timed-out side-effecting executors require reconciliation", async () => {
         setTimeout(() => {
           resolveLateEffect?.();
           resolve({ output: { applied: true } });
-        }, 75);
+        }, 750);
       });
     }
   }
@@ -453,7 +453,9 @@ test("timed-out side-effecting executors require reconciliation", async () => {
     primaryExecutor: "local",
     verifierExecutor: "local",
   });
-  graph.budgets.timeoutMs = 20;
+  // Leave enough headroom for checkpoint I/O before the executor starts. The
+  // executor itself still outlives the graph deadline and resolves late.
+  graph.budgets.timeoutMs = 500;
   const directory = await mkdtemp(join(tmpdir(), "graph-late-write-"));
   try {
     const result = await runGraph(graph, {
@@ -466,6 +468,38 @@ test("timed-out side-effecting executors require reconciliation", async () => {
     assert.deepEqual(
       needs.map((need) => need.nodeId),
       ["execute"],
+    );
+    assert.equal(checkpoint.nodes.execute?.failureKind, "timeout");
+    assert.equal(needs[0]?.requiresTerminationConfirmation, true);
+    assert.match(needs[0]?.idempotencyKey ?? "", /^graph:.*:node:execute$/);
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: result.runId,
+        nodeId: "execute",
+        token: needs[0]!.token,
+        outcome: "not_applied",
+        evidence: "No effect is visible, but the executor may still be running.",
+      }),
+      /requires --termination-json/,
+    );
+    await assert.rejects(
+      reconcileCheckpoint({
+        directory,
+        runId: result.runId,
+        nodeId: "execute",
+        token: needs[0]!.token,
+        outcome: "not_applied",
+        evidence: "The executor process was independently inspected.",
+        terminationEvidence: {
+          attemptId: "wrong-attempt",
+          executor: "local",
+          observedAt: new Date().toISOString(),
+          method: "process-tree inspection",
+          status: "terminated",
+        },
+      }),
+      /must match the timed-out attempt and executor/,
     );
     await lateEffect;
   } finally {
@@ -1121,6 +1155,8 @@ test("refuses automatic replay of an interrupted write node", async () => {
 
 test("requires fingerprint-bound reconciliation before retrying an ambiguous write", async () => {
   let executeCalls = 0;
+  const idempotencyKeys: Array<string | undefined> = [];
+  const attemptIds: Array<string | undefined> = [];
   class RetryExecutor implements GraphExecutor {
     readonly name = "retry";
     async execute(
@@ -1128,6 +1164,8 @@ test("requires fingerprint-bound reconciliation before retrying an ambiguous wri
     ): Promise<AgentExecutionResult> {
       if (request.nodeId === "execute") {
         executeCalls += 1;
+        idempotencyKeys.push(request.idempotencyKey);
+        attemptIds.push(request.attemptId);
         if (executeCalls === 1) throw new Error("simulated process loss");
         return { output: { applied: true } };
       }
@@ -1177,6 +1215,10 @@ test("requires fingerprint-bound reconciliation before retrying an ambiguous wri
     });
     assert.equal(resumed.status, "completed");
     assert.equal(executeCalls, 2);
+    assert.equal(idempotencyKeys.length, 2);
+    assert.equal(idempotencyKeys[0], idempotencyKeys[1]);
+    assert.match(idempotencyKeys[0] ?? "", /^graph:.*:node:execute$/);
+    assert.notEqual(attemptIds[0], attemptIds[1]);
     assert.equal(resumed.nodes.execute?.state, "completed");
     const events = (await readFile(resumed.auditPath!, "utf8"))
       .trim()

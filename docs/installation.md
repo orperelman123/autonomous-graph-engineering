@@ -1,15 +1,16 @@
 # Installation
 
-The repository supports three layers: standalone CLIs, MCP servers, and a shared
-Codex/Claude plugin bundle. Start with the local installer because it builds the
-TypeScript packages and gives the plugin absolute runtime paths.
+The repository supports three layers: standalone CLIs, MCP servers, and shared
+plugin assets for Codex, Claude Code, Cursor, and GitHub Copilot. Start with the
+local installer because it builds the TypeScript packages and gives MCP servers
+absolute runtime paths.
 
 ## Requirements
 
 - Node.js 20 or newer
 - npm
 - Git
-- Optional: authenticated `codex` and `claude` CLIs for model-backed graph nodes
+- Optional: authenticated host CLIs for the adapters you intend to use
 
 ## Build and verify
 
@@ -30,13 +31,24 @@ The installer:
 3. creates a self-contained plugin at `~/plugins/prompt-refiner`;
 4. generates that installed plugin's `.mcp.json` with absolute runtime paths.
 
+Activation is transactional: the bundle is staged, atomically swapped, and
+verified. If post-activation verification fails, the previous bundle is
+restored. An atomic lock prevents concurrent installers from interleaving.
+Global npm package installation happens before bundle activation and is not one
+transaction with the bundle; if npm itself fails, rerun after correcting npm.
+
 Use `npm run install:local -- --plugin-dir <absolute-path-ending-in-prompt-refiner>`
 to choose another target.
 
+Maintainers can add `--skip-global` for isolated installer verification without
+changing globally installed npm packages. Normal user installation should omit
+that flag so the two CLI commands are installed.
+
 Run `npm run doctor` at any time for a human-readable environment report, or
-`npm run doctor -- --json` for automation. Missing optional Codex, Claude,
-build, or installed-plugin components are reported with exact remediation;
-unsupported Node versions and incorrect repository roots fail the command.
+`npm run doctor -- --json` for automation. The report distinguishes CLI
+availability from authentication and MCP registration. Authentication and
+registration remain `unknown` unless an explicit host probe supplies evidence;
+the doctor does not make implicit host or network calls.
 
 ## Codex
 
@@ -97,6 +109,68 @@ configuration.
 The Claude plugin manifest and shared skill sources live under
 `plugins/prompt-refiner/`.
 
+## Cursor
+
+Build and transactionally install the local Cursor plugin:
+
+```bash
+npm run install:cursor
+```
+
+The default target is `~/.cursor/plugins/local/prompt-refiner`. Restart Cursor
+or reload its window after installation. The plugin includes:
+
+- `skills/` for on-demand prompt refinement and graph engineering;
+- `rules/prompt-refinement.mdc` with `alwaysApply: true`;
+- `cursor.mcp.json` for both local MCP servers.
+
+Cursor's current `beforeSubmitPrompt` hook can continue or block a prompt but
+cannot replace it. This project therefore does not claim hook-level automatic
+rewriting in Cursor. The always-on rule instructs the agent to construct and
+use the compact execution brief internally. The `!raw` prefix remains the
+documented one-prompt bypass.
+
+Verify the Cursor CLI separately when installed:
+
+```bash
+cursor-agent status
+cursor-agent mcp list
+```
+
+The repository contains Cursor marketplace metadata, but a public Cursor
+Marketplace listing is a separate publication action and is not implied by a
+local install.
+
+References: [Cursor plugins](https://cursor.com/docs/plugins),
+[Cursor rules](https://docs.cursor.com/context/rules), and
+[Cursor MCP](https://docs.cursor.com/context/model-context-protocol).
+
+## GitHub Copilot
+
+This integration targets GitHub Copilot CLI and its plugin system. Prepare the
+bundle, then register that exact local directory:
+
+```bash
+npm run install:copilot
+copilot plugin install ~/.copilot/plugins/local/prompt-refiner
+copilot plugin list
+```
+
+The plugin's `userPromptTransformed` hook runs the deterministic compiler before
+execution and returns `modifiedTransformedPrompt`. It fails closed into a
+clarification or confirmation request when required and honors `!raw`. The
+plugin also exposes the shared skills and both MCP servers.
+
+Inside Copilot CLI, use `/skills list` to confirm skill discovery. GitHub
+Copilot IDE and cloud-agent surfaces can consume agent skills, but Copilot CLI
+plugin hooks are the surface that provides deterministic per-prompt
+transformation.
+
+References: [creating Copilot CLI plugins](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating),
+[Copilot CLI plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference),
+[Copilot hooks](https://docs.github.com/en/copilot/reference/hooks-reference),
+and [agent skills](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills).
+
 ## Verify the installation
 
 ```bash
@@ -107,6 +181,9 @@ codex plugin list
 codex mcp list
 claude plugin list
 claude mcp list
+cursor-agent status
+cursor-agent mcp list
+copilot plugin list
 ```
 
 For a safe first execution:
@@ -132,6 +209,14 @@ claude plugin update prompt-refiner@autonomous-graph-engineering
 ```
 
 Re-register an MCP server only if its installed path or name changes.
+
+For Cursor or Copilot, rerun the corresponding installer so activation remains
+rollback-safe:
+
+```bash
+npm run install:cursor
+npm run install:copilot
+```
 
 ## Uninstalling
 

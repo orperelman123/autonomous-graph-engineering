@@ -1,0 +1,27 @@
+{
+  "name": "prompt-refiner",
+  "displayName": "Prompt Refiner + Graph Engineer",
+  "version": "0.1.0",
+  "description": "Improve requests without expanding intent, then run complex work as bounded, validated engineering graphs.",
+  "author": {
+    "name": "Autonomous Graph Engineering contributors"
+  },
+  "homepage": "https://github.com/orperelman123/autonomous-graph-engineering",
+  "repository": "https://github.com/orperelman123/autonomous-graph-engineering",
+  "license": "MIT",
+  "keywords": [
+    "prompt-refinement",
+    "graph-engineering",
+    "agents",
+    "safety"
+  ],
+  "category": "developer-tools",
+  "tags": [
+    "productivity",
+    "orchestration",
+    "governance"
+  ],
+  "skills": "./skills/",
+  "rules": "./rules/",
+  "mcpServers": "./cursor.mcp.json"
+}

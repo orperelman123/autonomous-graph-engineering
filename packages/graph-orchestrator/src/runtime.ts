@@ -2,7 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { validatedOutput } from "./output-schema.js";
 import { CheckpointStore, JsonlEventStore } from "./persistence.js";
-import { reconciliationToken } from "./reconciliation.js";
+import {
+  executionIdempotencyKey,
+  reconciliationToken,
+} from "./reconciliation.js";
 import type {
   AgentExecutionRequest,
   GraphExecutor,
@@ -218,13 +221,19 @@ async function invokeExecutor(
   const watchdog = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
       controller.abort();
-      reject(new Error(`executor timed out for node ${request.nodeId}`));
+      reject(new ExecutorTimeoutError(request.nodeId));
     }, request.timeoutMs);
   });
   try {
     return await Promise.race([execution, watchdog]);
   } finally {
     if (timeout) clearTimeout(timeout);
+  }
+}
+
+class ExecutorTimeoutError extends Error {
+  constructor(readonly nodeId: string) {
+    super(`executor timed out for node ${nodeId}`);
   }
 }
 
@@ -245,6 +254,7 @@ async function executeNode(
   options: RunGraphOptions,
   timeoutMs: number,
   runLimited: RunLimited,
+  attemptId?: string,
 ): Promise<{ output: unknown; usage?: TokenUsage }> {
   const input = dependencyInput(node, outputs);
   if (node.kind === "deterministic" || node.kind === "reduce") {
@@ -288,6 +298,15 @@ async function executeNode(
               ...(node.outputSchema ? { outputSchema: node.outputSchema } : {}),
               cwd: options.cwd ?? process.cwd(),
               timeoutMs,
+              ...(attemptId ? { attemptId: `${attemptId}:${index}` } : {}),
+              ...(node.permission !== "none" && node.permission !== "read"
+                ? {
+                    idempotencyKey: executionIdempotencyKey(
+                      runId,
+                      `${node.id}:${index}`,
+                    ),
+                  }
+                : {}),
             }),
           );
         return {
@@ -311,6 +330,10 @@ async function executeNode(
     ...(node.outputSchema ? { outputSchema: node.outputSchema } : {}),
     cwd: options.cwd ?? process.cwd(),
     timeoutMs,
+    ...(attemptId ? { attemptId } : {}),
+    ...(node.permission !== "none" && node.permission !== "read"
+      ? { idempotencyKey: executionIdempotencyKey(runId, node.id) }
+      : {}),
   };
   const execution = await runLimited(() => invokeExecutor(executor, request));
   return {
@@ -520,6 +543,10 @@ export async function runGraph(
           }
           state.state = "running";
           state.startedAt = now().toISOString();
+          state.attemptId = randomUUID();
+          if (node.permission !== "none" && node.permission !== "read") {
+            state.idempotencyKey ??= executionIdempotencyKey(runId, node.id);
+          }
           await store.append(
             { runId, type: "node_started", nodeId: node.id },
             now(),
@@ -536,6 +563,7 @@ export async function runGraph(
               options,
               remainingMs,
               runLimited,
+              state.attemptId,
             );
             outputs[node.id] = execution.output;
             if (execution.usage) state.usage = execution.usage;
@@ -578,12 +606,23 @@ export async function runGraph(
             }
             state.state = "failed";
             state.error = (error as Error).message;
+            state.failureKind =
+              error instanceof ExecutorTimeoutError ||
+              /timed out/i.test(state.error)
+                ? "timeout"
+                : "executor";
             await store.append(
               {
                 runId,
                 type: "node_failed",
                 nodeId: node.id,
-                data: { error: state.error },
+                data: {
+                  error: state.error,
+                  failureKind: state.failureKind,
+                  ...(state.idempotencyKey
+                    ? { idempotencyKey: state.idempotencyKey }
+                    : {}),
+                },
               },
               now(),
             );
