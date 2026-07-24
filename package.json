@@ -1,6 +1,6 @@
 {
   "name": "autonomous-graph-engineering",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, and GitHub Copilot.",
   "license": "MIT",

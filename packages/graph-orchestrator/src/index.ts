@@ -37,6 +37,17 @@ export type {
   SemanticGrade,
 } from "./semantic-grader.js";
 export { startGraphServer } from "./server.js";
+export {
+  AtbashSecurityProvider,
+  defaultExecutors,
+  securityProviderFromEnvironment,
+  SecurityGatedExecutor,
+} from "./security.js";
+export type {
+  GraphSecurityProvider,
+  SecurityAuthorizationDecision,
+  SecurityAuthorizationRequest,
+} from "./security.js";
 export { validateGraph } from "./validator.js";
 export type {
   AgentExecutionRequest,

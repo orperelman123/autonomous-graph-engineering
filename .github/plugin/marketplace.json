@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "prompt-refiner",
       "description": "Improve prompts and run bounded, validated engineering graphs.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./plugins/prompt-refiner"
     }
   ]

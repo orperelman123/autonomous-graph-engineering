@@ -13,3 +13,4 @@ Thumbs.db
 coverage/
 tmp/
 temp/
+.tmp-*/

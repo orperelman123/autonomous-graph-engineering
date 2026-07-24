@@ -1,12 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import {
-  ClaudeCliExecutor,
-  CodexCliExecutor,
-  LocalEchoExecutor,
-} from "./executors.js";
 import { planGraph } from "./planner.js";
 import { runGraph } from "./runtime.js";
+import { defaultExecutors } from "./security.js";
 import type { GraphSpec, PlanGraphRequest } from "./types.js";
 import { validateGraph } from "./validator.js";
 
@@ -117,11 +113,7 @@ export function startGraphServer(
           response,
           200,
           await runGraph(graph, {
-            executors: {
-              codex: new CodexCliExecutor(),
-              claude: new ClaudeCliExecutor(),
-              local: new LocalEchoExecutor(),
-            },
+            executors: defaultExecutors(),
             approvals,
           }),
         );

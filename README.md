@@ -70,6 +70,7 @@ It verifies how direct execution, a bounded repair loop, and a validated graph b
 - CLI-only reconciliation for ambiguous side effects
 - Artifact and repository semantic graders
 - MCP, CLI, and authenticated loopback-first HTTP interfaces
+- Optional fail-closed external security provider with hashed inputs
 
 ## Graph engineering and loop engineering
 
@@ -163,7 +164,7 @@ flowchart LR
   H["Fingerprint-bound human gate"] --> C["Consequential action"]
 ```
 
-See [Architecture](docs/architecture.md), [Installation](docs/installation.md), [Security model](docs/security-model.md), and [Interfaces](docs/interfaces.md).
+See [Architecture](docs/architecture.md), [Installation](docs/installation.md), [Security model](docs/security-model.md), [External security provider](docs/external-security-provider.md), and [Interfaces](docs/interfaces.md).
 Maintainers should also follow the evidence-gated [Release process](docs/releasing.md).
 
 ## Repository layout
@@ -194,7 +195,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 91 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
+The current suite contains 100 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
 
 ## Contributing
 

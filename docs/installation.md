@@ -81,6 +81,20 @@ codex plugin add prompt-refiner@autonomous-graph-engineering
 Restart or open a new Codex task after installing or upgrading the plugin so the
 new skills and server configuration are discovered.
 
+### Optional native security provider
+
+To add the official Atbash SDK to the local plugin bundle without copying its
+source into this repository or enabling an unconfigured gate:
+
+```bash
+npm run install:local -- --with-atbash
+npm run verify:install -- --expect-atbash
+```
+
+See [External security provider](external-security-provider.md) for onboarding,
+explicit activation, data boundaries, failure behavior, and private
+configuration requirements.
+
 ## Claude Code
 
 Install the Claude plugin so its skills and `UserPromptSubmit` hook are active:

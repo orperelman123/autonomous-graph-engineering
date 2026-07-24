@@ -16,6 +16,11 @@ const platformIndex = process.argv.indexOf("--platform");
 const platform =
   platformIndex >= 0 ? process.argv[platformIndex + 1] : "codex-claude";
 const skipGlobal = process.argv.includes("--skip-global");
+const withAtbash = process.argv.includes("--with-atbash");
+const enableAtbash = process.argv.includes("--enable-atbash");
+if (enableAtbash && !withAtbash) {
+  throw new Error("--enable-atbash requires --with-atbash");
+}
 if (!["codex-claude", "cursor", "copilot"].includes(platform)) {
   throw new Error("platform must be codex-claude, cursor, or copilot");
 }
@@ -32,7 +37,7 @@ if (basename(pluginTarget) !== "prompt-refiner" || pluginTarget === homedir()) {
   throw new Error("plugin target must end in a dedicated prompt-refiner directory");
 }
 
-function run(command, args) {
+function run(command, args, cwd = root) {
   const windowsNpm = process.platform === "win32" && command === "npm";
   const commandLine = [command, ...args]
     .map((value) => {
@@ -43,7 +48,7 @@ function run(command, args) {
   execFileSync(
     windowsNpm ? process.env.ComSpec ?? "cmd.exe" : command,
     windowsNpm ? ["/d", "/s", "/c", commandLine] : args,
-    { cwd: root, stdio: "inherit" },
+    { cwd, stdio: "inherit" },
   );
 }
 
@@ -71,6 +76,19 @@ await withInstallLock(pluginTarget, async () => {
       join(temporary, "graph-runtime"),
       { recursive: true },
     );
+    if (withAtbash) {
+      run(
+        "npm",
+        [
+          "install",
+          "--no-save",
+          "--omit=dev",
+          "--ignore-scripts",
+          "@atbash/sdk@0.6.0",
+        ],
+        temporary,
+      );
+    }
     const dependency = join(
       temporary,
       "node_modules",
@@ -104,12 +122,15 @@ await withInstallLock(pluginTarget, async () => {
       mcpServers: {
         "prompt-refiner": {
           command: "node",
-        args: [join(pluginTarget, "runtime", "mcp-server.js")],
-        env: { PROMPT_REFINER_PROVIDER: "none" },
-      },
-      "graph-engineer": {
-        command: "node",
-        args: [join(pluginTarget, "graph-runtime", "mcp-server.js")],
+          args: [join(pluginTarget, "runtime", "mcp-server.js")],
+          env: { PROMPT_REFINER_PROVIDER: "none" },
+        },
+        "graph-engineer": {
+          command: "node",
+          args: [join(pluginTarget, "graph-runtime", "mcp-server.js")],
+          ...(enableAtbash
+            ? { env: { GRAPH_ENGINEER_SECURITY_PROVIDER: "atbash" } }
+            : {}),
         },
       },
     };
@@ -143,5 +164,5 @@ await withInstallLock(pluginTarget, async () => {
 });
 process.stdout.write(
   `${skipGlobal ? "Installed plugin bundle" : "Installed CLIs and plugin bundle"} at ${pluginTarget}.\n` +
-  `Prepared the ${platform} adapter. See docs/installation.md for host registration and verification.\n`,
+  `Prepared the ${platform} adapter${withAtbash ? " with the official Atbash SDK" : ""}${enableAtbash ? " enabled" : ""}. See docs/installation.md for host registration and verification.\n`,
 );

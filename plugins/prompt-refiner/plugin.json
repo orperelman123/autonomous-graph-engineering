@@ -1,6 +1,6 @@
 {
   "name": "prompt-refiner",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"

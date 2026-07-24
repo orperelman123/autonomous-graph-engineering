@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { createRequire } from "node:module";
 
 const requestedIndex = process.argv.indexOf("--plugin-dir");
 const requested =
@@ -12,6 +13,7 @@ const pluginTarget = resolve(
 if (basename(pluginTarget) !== "prompt-refiner") {
   throw new Error("plugin target must end in prompt-refiner");
 }
+const expectAtbash = process.argv.includes("--expect-atbash");
 
 const configuration = JSON.parse(
   await readFile(join(pluginTarget, ".mcp.json"), "utf8"),
@@ -97,5 +99,20 @@ for (const [name, expectedTools] of expected) {
   }
   process.stdout.write(
     `${name}: verified ${actualTools.length} tools at ${server.args[0]}\n`,
+  );
+}
+
+if (expectAtbash) {
+  const requireFromPlugin = createRequire(join(pluginTarget, "package.json"));
+  const sdkPath = requireFromPlugin.resolve("@atbash/sdk");
+  await access(sdkPath);
+  const sdk = requireFromPlugin("@atbash/sdk");
+  if (typeof sdk.Atbash?.fromConfig !== "function") {
+    throw new Error(
+      "external security SDK loaded without the expected native Atbash binding",
+    );
+  }
+  process.stdout.write(
+    "external security SDK: verified installed package and native binding\n",
   );
 }
