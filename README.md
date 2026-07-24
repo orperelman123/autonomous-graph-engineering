@@ -194,7 +194,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 78 unit, interface, launch-readiness, and schema-contract tests, 20 adversarial graph cases, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
+The current suite contains 91 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
 
 ## Contributing
 
