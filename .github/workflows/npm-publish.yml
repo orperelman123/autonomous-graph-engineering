@@ -1,0 +1,121 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (for example v0.3.2)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: npm-publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish verified npm packages
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Verify immutable release input
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag must be an exact stable semver such as v0.3.2" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          tag_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          test -n "$tag_commit"
+          test "$(git rev-parse HEAD)" = "$tag_commit"
+          git merge-base --is-ancestor "$tag_commit" origin/main
+          node scripts/verify-release-version.mjs "$RELEASE_TAG"
+      - name: Use an OIDC-capable npm CLI
+        run: |
+          npm install --global npm@11.18.0
+          npm_version="$(npm --version)"
+          node -e "const [major, minor] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && minor < 5)) process.exit(1)" "$npm_version"
+      - name: Build and verify from a clean install
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+      - name: Pack immutable publication artifacts
+        run: |
+          mkdir npm-artifacts
+          npm pack --json \
+            --workspace @autonomous-graph-engineering/prompt-refiner \
+            --pack-destination npm-artifacts > npm-artifacts/prompt-refiner.json
+          npm pack --json \
+            --workspace @autonomous-graph-engineering/graph-engineer \
+            --pack-destination npm-artifacts > npm-artifacts/graph-engineer.json
+      - name: Publish in dependency order or verify an identical retry
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          NPM_CONFIG_PROVENANCE: "true"
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+        run: |
+          set -euo pipefail
+          version="$RELEASE_TAG"
+          version="${version#v}"
+
+          publish_or_verify() {
+            package_name="$1"
+            archive="$2"
+            metadata="$3"
+            local_integrity="$(
+              node -e "const fs=require('node:fs'); const value=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(value[0].integrity)" "$metadata"
+            )"
+            error_file="$(mktemp)"
+            if existing_integrity="$(npm view "$package_name@$version" dist.integrity --json 2>"$error_file")"; then
+              existing_integrity="${existing_integrity//\"/}"
+              if [[ "$existing_integrity" != "$local_integrity" ]]; then
+                echo "$package_name@$version exists with different integrity" >&2
+                exit 1
+              fi
+              echo "$package_name@$version already matches the verified artifact; skipping duplicate publish"
+            else
+              if ! grep -q "E404" "$error_file"; then
+                cat "$error_file" >&2
+                exit 1
+              fi
+              npm publish "$archive" --access public --provenance
+            fi
+            for attempt in 1 2 3 4 5 6; do
+              if published_integrity="$(npm view "$package_name@$version" dist.integrity --json 2>/dev/null)"; then
+                published_integrity="${published_integrity//\"/}"
+                if [[ "$published_integrity" = "$local_integrity" ]]; then
+                  return 0
+                fi
+              fi
+              sleep 5
+            done
+            echo "registry read-back did not match $package_name@$version" >&2
+            exit 1
+          }
+
+          publish_or_verify \
+            "@autonomous-graph-engineering/prompt-refiner" \
+            "npm-artifacts/autonomous-graph-engineering-prompt-refiner-$version.tgz" \
+            "npm-artifacts/prompt-refiner.json"
+          publish_or_verify \
+            "@autonomous-graph-engineering/graph-engineer" \
+            "npm-artifacts/autonomous-graph-engineering-graph-engineer-$version.tgz" \
+            "npm-artifacts/graph-engineer.json"

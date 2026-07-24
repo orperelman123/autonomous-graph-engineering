@@ -4,6 +4,10 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add a manual, OIDC-based npm trusted-publishing workflow with provenance,
+  exact tag/version verification, ordered publication, integrity-checked
+  retries, least-privilege permissions, and documented bootstrap gates.
+
 ## 0.3.1 - 2026-07-24
 
 - Make checkpoint commits budget-atomic: retain provider usage while excluding

@@ -35,10 +35,60 @@ returned zero; every public artifact must be read back from its destination.
 10. Publish benchmark results only with the protocol, raw results, limitations,
     model identifiers, repetitions, token usage, and cost accounting.
 
+## npm trusted publishing
+
+Future npm releases use the manually dispatched
+`.github/workflows/npm-publish.yml` workflow. It uses GitHub-hosted runners,
+Node 24, npm 11.18.0, `contents: read`, and `id-token: write`; it contains no
+registry token. The job checks out an existing stable release tag, proves that
+the tag commit is on `main`, verifies every synchronized version and exact
+workspace dependency, rebuilds and tests from `npm ci`, then publishes
+`prompt-refiner` before `graph-engineer`.
+
+The workflow is safe to retry after a partial release. Before each publish it
+packs the local artifact and compares its integrity with the registry. An
+identical existing version is skipped; a different integrity or a registry
+error fails closed. Each successful publish is read back and compared again.
+Trusted publishing automatically creates npm provenance, and the workflow also
+requests provenance explicitly.
+
+Trusted publishing cannot bootstrap a package that does not yet exist on npm.
+The current packages must therefore be created once by an authenticated owner:
+
+```bash
+npm login
+npm ci
+npm run check
+npm publish --workspace @autonomous-graph-engineering/prompt-refiner --access public
+npm publish --workspace @autonomous-graph-engineering/graph-engineer --access public
+```
+
+Read both versions back, then configure a trusted publisher separately for
+each package in npm package settings:
+
+- provider: GitHub Actions;
+- GitHub owner: `orperelman123`;
+- repository: `autonomous-graph-engineering`;
+- workflow filename: `npm-publish.yml`;
+- environment: `npm`;
+- allowed action: `npm publish`.
+
+The package, npm account with two-factor authentication, and publisher
+relationship must already exist before the equivalent npm CLI trust command
+can be used. In GitHub, create an `npm` environment with required reviewers and
+deployment restrictions. Once both package relationships exist, dispatch
+`Publish npm` with an already verified tag such as `v0.3.2`. Do not dispatch it
+for a version whose source tag has not passed the complete release gates.
+
+Authoritative references: [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/),
+[npm publish](https://docs.npmjs.com/cli/publish/), and
+[GitHub OIDC permissions](https://docs.github.com/en/actions/reference/security/oidc).
+
 ## Human and account gates
 
 - npm publication requires an authenticated npm account that owns or can create
-  the `@autonomous-graph-engineering` scope.
+  the `@autonomous-graph-engineering` scope. The first publication is also the
+  bootstrap required before npm can accept a trusted-publisher configuration.
 - Cursor Marketplace submission requires the publisher to accept Cursor's
   publisher terms and submit its application.
 - Paid benchmark execution requires a finite user-approved cost ceiling.
