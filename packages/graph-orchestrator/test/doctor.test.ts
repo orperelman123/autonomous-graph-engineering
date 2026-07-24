@@ -146,3 +146,28 @@ test("doctor reports injected host evidence without inferring it from availabili
     "unknown",
   );
 });
+
+test("doctor probes each CLI once without spawning shell discovery commands", async () => {
+  const probes = new Map<string, number>();
+  await runDoctor({
+    root,
+    pluginDirectory,
+    nodeVersion: "20.20.0",
+    commandAvailable: (command) => {
+      probes.set(command, (probes.get(command) ?? 0) + 1);
+      return command === "npm";
+    },
+    exists: async () => true,
+    readJson: async (path) =>
+      path.endsWith("package.json")
+        ? { name: "autonomous-graph-engineering" }
+        : { mcpServers: {} },
+  });
+  assert.deepEqual(Object.fromEntries(probes), {
+    npm: 1,
+    codex: 1,
+    claude: 1,
+    "cursor-agent": 1,
+    copilot: 1,
+  });
+});

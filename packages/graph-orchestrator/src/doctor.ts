@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface DoctorCheck {
@@ -68,19 +68,29 @@ async function parseJson(path: string): Promise<unknown> {
 }
 
 function executableAvailable(command: string): boolean {
-  const probe =
-    process.platform === "win32"
-      ? spawnSync("where.exe", [command], {
-          stdio: "ignore",
-          timeout: 2_000,
-          maxBuffer: 4_096,
-        })
-      : spawnSync("sh", ["-lc", `command -v "${command}"`], {
-          stdio: "ignore",
-          timeout: 2_000,
-          maxBuffer: 4_096,
-        });
-  return probe.status === 0;
+  const pathEntries = (process.env.PATH ?? "")
+    .split(delimiter)
+    .map((entry) => entry.replace(/^"(.*)"$/, "$1"))
+    .filter(Boolean);
+  const extensions =
+    process.platform === "win32" && extname(command) === ""
+      ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD")
+          .split(";")
+          .filter(Boolean)
+      : [""];
+  const mode =
+    process.platform === "win32" ? constants.F_OK : constants.X_OK;
+
+  return pathEntries.some((directory) =>
+    extensions.some((extension) => {
+      try {
+        accessSync(join(directory, `${command}${extension}`), mode);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
 }
 
 function check(
@@ -125,12 +135,13 @@ export async function runDoctor(
       "Install Node.js 20 or newer.",
     ),
   );
+  const npmAvailable = commandAvailable("npm");
   checks.push(
     check(
       "npm-cli",
       true,
-      commandAvailable("npm"),
-      commandAvailable("npm") ? "npm CLI is available" : "npm CLI not found",
+      npmAvailable,
+      npmAvailable ? "npm CLI is available" : "npm CLI not found",
       "Install npm and ensure it is on PATH.",
     ),
   );
