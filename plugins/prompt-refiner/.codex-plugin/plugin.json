@@ -1,6 +1,6 @@
 {
   "name": "prompt-refiner",
-  "version": "0.1.0+codex.20260724103010",
+  "version": "0.3.3",
   "description": "GraphVigil improves requests and executes complex work as validated, permission-safe autonomous graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"

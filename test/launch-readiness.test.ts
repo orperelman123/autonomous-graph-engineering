@@ -14,6 +14,7 @@ test("release version is synchronized across packages, plugins, and servers", as
       "packages/graph-orchestrator/package.json",
       "plugins/prompt-refiner/package.json",
       "plugins/prompt-refiner/plugin.json",
+      "plugins/prompt-refiner/.codex-plugin/plugin.json",
       "plugins/prompt-refiner/.cursor-plugin/plugin.json",
     ].map(async (path) =>
       JSON.parse(await readFile(path, "utf8")) as {
@@ -24,21 +25,21 @@ test("release version is synchronized across packages, plugins, and servers", as
   );
   assert.deepEqual(
     manifests.map((manifest) => manifest.version),
-    Array(manifests.length).fill("0.3.2"),
+    Array(manifests.length).fill("0.3.3"),
   );
   assert.equal(
     manifests[2]?.dependencies?.[
       "@autonomous-graph-engineering/prompt-refiner"
     ],
-    "0.3.2",
+    "0.3.3",
   );
   for (const path of [
-    "packages/prompt-refiner/src/mcp-server.ts",
-    "packages/graph-orchestrator/src/mcp-server.ts",
+    "packages/prompt-refiner/src/version.ts",
+    "packages/graph-orchestrator/src/version.ts",
   ]) {
     assert.match(
       await readFile(path, "utf8"),
-      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.2"\s*\}/,
+      /export const [A-Z_]+_VERSION = "0\.3\.3"/,
     );
   }
   const marketplace = JSON.parse(
@@ -47,8 +48,8 @@ test("release version is synchronized across packages, plugins, and servers", as
     metadata: { version: string };
     plugins: Array<{ version: string }>;
   };
-  assert.equal(marketplace.metadata.version, "0.3.2");
-  assert.equal(marketplace.plugins[0]?.version, "0.3.2");
+  assert.equal(marketplace.metadata.version, "0.3.3");
+  assert.equal(marketplace.plugins[0]?.version, "0.3.3");
 });
 
 test("repository excludes credential artifacts and vendored Atbash source", async () => {
@@ -125,12 +126,12 @@ test("npm trusted publishing is manual, least-privilege, and retry-safe", async 
 
   const verified = await execute(
     process.execPath,
-    ["scripts/verify-release-version.mjs", "v0.3.2"],
+    ["scripts/verify-release-version.mjs", "v0.3.3"],
     { cwd: process.cwd() },
   );
   assert.equal(
     (JSON.parse(verified.stdout) as { version: string }).version,
-    "0.3.2",
+    "0.3.3",
   );
   await assert.rejects(
     execute(

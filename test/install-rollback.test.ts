@@ -82,10 +82,17 @@ test("clean local adapter bundle starts both installed MCP servers", async () =>
       ["scripts/verify-install.mjs", "--plugin-dir", target],
       { cwd: process.cwd(), timeout: 30_000 },
     );
-    assert.match(verification.stdout, /prompt-refiner: verified 2 tools/);
-    assert.match(verification.stdout, /graph-engineer: verified 6 tools/);
+    assert.match(
+      verification.stdout,
+      /prompt-refiner: verified 3 tools and current runtime 0\.3\.3/,
+    );
+    assert.match(
+      verification.stdout,
+      /graph-engineer: verified 7 tools and current runtime 0\.3\.3/,
+    );
     for (const file of [
       ".cursor-plugin/plugin.json",
+      "install-manifest.json",
       "plugin.json",
       "cursor.mcp.json",
       "copilot.mcp.json",

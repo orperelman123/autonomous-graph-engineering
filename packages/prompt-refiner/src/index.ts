@@ -9,6 +9,14 @@ export type {
   AgentCommandOptions,
   SupportedAgent,
 } from "./agent-command.js";
+export { getRuntimeInfo } from "./runtime-info.js";
+export type {
+  RuntimeComponent,
+  RuntimeInfo,
+  RuntimeInfoOptions,
+  RuntimeStatus,
+} from "./runtime-info.js";
+export { PROMPT_REFINER_VERSION } from "./version.js";
 export { collectContext } from "./context.js";
 export {
   buildHookFailureResponse,

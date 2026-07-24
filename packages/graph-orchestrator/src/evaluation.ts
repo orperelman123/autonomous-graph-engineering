@@ -68,6 +68,27 @@ const cases: EvaluationCase[] = [
     },
   },
   {
+    id: "negated-consequential-list-does-not-add-gate",
+    run: async () => {
+      const graph = planGraph({
+        prompt:
+          "Audit and repair every local adapter. Do not commit, push, merge, publish packages, create releases, submit marketplaces, or promote externally.",
+        autonomy: "workspace",
+        forceGraph: true,
+      });
+      const validation = validateGraph(graph);
+      return !graph.nodes.some((node) => node.kind === "human_gate") &&
+        !graph.nodes.some(
+          (node) =>
+            node.permission === "external" ||
+            node.permission === "destructive",
+        ) &&
+        validation.valid
+        ? []
+        : ["negated consequential list added a gate or unsafe permission"];
+    },
+  },
+  {
     id: "cycle-rejected",
     run: async () => {
       const graph = mutatedGraph((value) => {

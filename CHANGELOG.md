@@ -4,6 +4,19 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.3.3 - 2026-07-24
+
+- Preserve clause-scoped negative constraints across comma-separated action
+  lists so excluded external and destructive actions cannot create permissions
+  or graph human gates.
+- Add managed runtime identity to installed MCP servers so an upgraded but
+  still-running host reports `reload_required` until it reloads the active
+  installation.
+- Launch and identity-check both staged MCP servers before completing an
+  installation, preserving automatic rollback for broken runtime bundles.
+- Synchronize the Codex plugin manifest with the release version so host plugin
+  caches can detect upgrades instead of retaining the original build version.
+
 ## 0.3.2 - 2026-07-24
 
 - Introduce the public GraphVigil display name while preserving every existing

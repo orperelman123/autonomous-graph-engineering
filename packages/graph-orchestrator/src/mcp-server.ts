@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
+import { getRuntimeInfo } from "@autonomous-graph-engineering/prompt-refiner";
 import { runGraphEvaluation } from "./evaluation.js";
 import { planGraph } from "./planner.js";
 import { runGraph } from "./runtime.js";
@@ -11,6 +12,7 @@ import type {
   PlanGraphRequest,
 } from "./types.js";
 import { validateGraph } from "./validator.js";
+import { GRAPH_ENGINEER_VERSION } from "./version.js";
 
 type Request = {
   jsonrpc: "2.0";
@@ -114,6 +116,16 @@ function fail(id: Request["id"], code: number, message: string): void {
 
 const tools = [
   {
+    name: "get_runtime_info",
+    description:
+      "Report the active GraphVigil installation identity and whether this host must reload after an upgrade.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "plan_graph",
     description:
       "Compile a request into a bounded autonomous graph without executing it.",
@@ -201,7 +213,10 @@ async function handle(request: Request): Promise<void> {
         (request.params?.protocolVersion as string | undefined) ??
         "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "graph-engineer", version: "0.3.2" },
+      serverInfo: {
+        name: "graph-engineer",
+        version: GRAPH_ENGINEER_VERSION,
+      },
       instructions:
         "Plan first. Validate every graph. Never expand permissions. Require human gates for consequential actions.",
     });
@@ -223,7 +238,9 @@ async function handle(request: Request): Promise<void> {
   const name = request.params?.name;
   const args = (request.params?.arguments ?? {}) as Record<string, unknown>;
   let output: unknown;
-  if (name === "plan_graph") {
+  if (name === "get_runtime_info") {
+    output = await getRuntimeInfo("graph-engineer", GRAPH_ENGINEER_VERSION);
+  } else if (name === "plan_graph") {
     output = planGraph(args as unknown as PlanGraphRequest);
   } else if (name === "validate_graph") {
     output = validateGraph(args.graph as GraphSpec);

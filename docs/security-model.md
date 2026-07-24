@@ -8,6 +8,7 @@
 - Provider credentials and local configuration
 - Human approvals and reconciliation attestations
 - Audit and checkpoint integrity
+- Installed-runtime identity and stale-host detection
 - Token and cost budgets
 - Private [external authorization providers](external-security-provider.md)
 
@@ -47,6 +48,17 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Concurrent writes are rejected because worktree isolation is not yet enforced.
 - Process output, wall time, repair rounds, fan-out, concurrency, and tokens are capped.
 - Complete subprocess trees are terminated on abort or timeout.
+
+### Installed runtime identity
+
+- Transactional installs generate a new random, non-secret installation ID.
+- Both MCP processes retain their boot ID and compare it with the active
+  manifest on every `get_runtime_info` call.
+- A replaced bundle reports `reload_required` until the host restarts the
+  process; a missing or malformed managed manifest reports
+  `invalid_manifest`.
+- Runtime status omits the manifest path, credentials, prompts, and graph
+  inputs.
 
 ### Recovery
 

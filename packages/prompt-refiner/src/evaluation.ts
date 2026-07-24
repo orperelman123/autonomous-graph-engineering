@@ -95,6 +95,33 @@ export const DEFAULT_EVALUATION_CASES: EvaluationCase[] = [
     mustNotRequestPermissions: ["external_side_effect"],
   },
   {
+    id: "negated-external-list",
+    prompt:
+      "Fix the local adapter. Do not commit, push, merge, publish packages, create releases, submit marketplaces, or promote externally.",
+    expectedStatus: "ready",
+    expectedClassification: "implementation",
+    mustNotRequestPermissions: ["external_side_effect"],
+  },
+  {
+    id: "negated-mixed-list",
+    prompt:
+      "Audit the repository without deleting files, pushing branches, opening pull requests, or using sudo.",
+    expectedStatus: "ready",
+    expectedClassification: "investigation",
+    mustNotRequestPermissions: [
+      "destructive_change",
+      "external_side_effect",
+      "elevated_access",
+    ],
+  },
+  {
+    id: "positive-after-negative-contrast",
+    prompt:
+      "Do not publish packages or create releases, but open a pull request for the reviewed branch.",
+    expectedStatus: "confirmation_required",
+    expectedClassification: "external_action",
+  },
+  {
     id: "informational-delete",
     prompt: "Explain how to delete a local cache safely without deleting anything.",
     expectedStatus: "ready",

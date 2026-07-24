@@ -49,6 +49,7 @@ export type {
   SecurityAuthorizationRequest,
 } from "./security.js";
 export { validateGraph } from "./validator.js";
+export { GRAPH_ENGINEER_VERSION } from "./version.js";
 export type {
   AgentExecutionRequest,
   AgentExecutionResult,

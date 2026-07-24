@@ -1,7 +1,7 @@
 {
   "name": "prompt-refiner",
   "displayName": "GraphVigil",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Refine requests without expanding intent, then run complex work as bounded, validated GraphVigil engineering graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"

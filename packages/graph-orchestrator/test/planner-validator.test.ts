@@ -38,6 +38,34 @@ test("requires a gate before consequential operations", () => {
   assert.equal(validateGraph(graph).valid, true);
 });
 
+test("does not gate explicitly negated consequential action lists", () => {
+  const graph = planGraph({
+    prompt:
+      "Audit and repair every local adapter. Do not commit, push, merge, publish packages, create releases, submit marketplaces, or promote externally.",
+    autonomy: "workspace",
+    forceGraph: true,
+  });
+
+  assert.equal(graph.metadata.routing, "graph");
+  assert.equal(
+    graph.nodes.some((node) => node.kind === "human_gate"),
+    false,
+  );
+  assert.equal(
+    graph.nodes.some(
+      (node) =>
+        node.permission === "external" ||
+        node.permission === "destructive",
+    ),
+    false,
+  );
+  assert.equal(
+    graph.nodes.find((node) => node.id === "implement")?.permission,
+    "write",
+  );
+  assert.equal(validateGraph(graph).valid, true);
+});
+
 test("rejects arbitrary cycles", () => {
   const graph = planGraph({
     prompt: "Audit every service and verify the findings.",

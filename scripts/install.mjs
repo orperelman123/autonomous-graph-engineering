@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -107,6 +108,12 @@ await withInstallLock(pluginTarget, async () => {
         "utf8",
       ),
     );
+    const graphPackageSource = JSON.parse(
+      await readFile(
+        join(root, "packages", "graph-orchestrator", "package.json"),
+        "utf8",
+      ),
+    );
     await writeFile(
       join(dependency, "package.json"),
       `${JSON.stringify({
@@ -118,19 +125,52 @@ await withInstallLock(pluginTarget, async () => {
       }, null, 2)}\n`,
       "utf8",
     );
+    const installId = randomUUID();
+    const installManifest = {
+      schemaVersion: "1.0",
+      installId,
+      installedAt: new Date().toISOString(),
+      platform,
+      components: {
+        promptRefiner: packageSource.version,
+        graphEngineer: graphPackageSource.version,
+      },
+      atbash: {
+        installed: withAtbash,
+        enabled: enableAtbash,
+      },
+    };
+    await writeFile(
+      join(temporary, "install-manifest.json"),
+      `${JSON.stringify(installManifest, null, 2)}\n`,
+      "utf8",
+    );
+    const runtimeIdentity = {
+      GRAPHVIGIL_INSTALL_ID: installId,
+      GRAPHVIGIL_INSTALL_MANIFEST: join(
+        pluginTarget,
+        "install-manifest.json",
+      ),
+    };
     const mcpConfiguration = {
       mcpServers: {
         "prompt-refiner": {
           command: "node",
           args: [join(pluginTarget, "runtime", "mcp-server.js")],
-          env: { PROMPT_REFINER_PROVIDER: "none" },
+          env: {
+            PROMPT_REFINER_PROVIDER: "none",
+            ...runtimeIdentity,
+          },
         },
         "graph-engineer": {
           command: "node",
           args: [join(pluginTarget, "graph-runtime", "mcp-server.js")],
-          ...(enableAtbash
-            ? { env: { GRAPH_ENGINEER_SECURITY_PROVIDER: "atbash" } }
-            : {}),
+          env: {
+            ...runtimeIdentity,
+            ...(enableAtbash
+              ? { GRAPH_ENGINEER_SECURITY_PROVIDER: "atbash" }
+              : {}),
+          },
         },
       },
     };
@@ -151,11 +191,22 @@ await withInstallLock(pluginTarget, async () => {
       verify: async (installed) => {
         for (const required of [
           join(installed, ".mcp.json"),
+          join(installed, "install-manifest.json"),
           join(installed, "runtime", "mcp-server.js"),
           join(installed, "graph-runtime", "mcp-server.js"),
         ]) {
           await readFile(required);
         }
+        run(
+          process.execPath,
+          [
+            "scripts/verify-install.mjs",
+            "--plugin-dir",
+            installed,
+            ...(withAtbash ? ["--expect-atbash"] : []),
+          ],
+          root,
+        );
       },
     });
   } finally {
@@ -164,5 +215,6 @@ await withInstallLock(pluginTarget, async () => {
 });
 process.stdout.write(
   `${skipGlobal ? "Installed plugin bundle" : "Installed CLIs and plugin bundle"} at ${pluginTarget}.\n` +
-  `Prepared the ${platform} adapter${withAtbash ? " with the official Atbash SDK" : ""}${enableAtbash ? " enabled" : ""}. See docs/installation.md for host registration and verification.\n`,
+  `Prepared the ${platform} adapter${withAtbash ? " with the official Atbash SDK" : ""}${enableAtbash ? " enabled" : ""}. See docs/installation.md for host registration and verification.\n` +
+  "Reload each active host, then call get_runtime_info; status=current confirms the new installation is active.\n",
 );

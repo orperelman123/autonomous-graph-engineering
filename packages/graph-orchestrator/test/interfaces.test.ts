@@ -82,7 +82,7 @@ test("MCP server initializes and lists all graph tools", async () => {
 
   assert.ok(responses.some((response) => response.id === 1));
   const listed = responses.find((response) => response.id === 2);
-  assert.equal(listed?.result?.tools?.length, 6);
+  assert.equal(listed?.result?.tools?.length, 7);
 });
 
 test("MCP starts and polls a graph without holding the request open", async () => {
