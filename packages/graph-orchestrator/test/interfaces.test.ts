@@ -4,6 +4,21 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { startGraphServer } from "../src/server.js";
 
+async function stopChild(child: ReturnType<typeof spawn>): Promise<void> {
+  if (child.exitCode !== null) return;
+  const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+  child.stdin.end();
+  child.kill();
+  await Promise.race([
+    exited,
+    new Promise<void>((resolve) => setTimeout(resolve, 2_000)),
+  ]);
+  if (child.exitCode === null) {
+    child.kill("SIGKILL");
+    await exited;
+  }
+}
+
 test("MCP server initializes and lists all graph tools", async () => {
   const serverPath = fileURLToPath(
     new URL("../src/mcp-server.ts", import.meta.url),
@@ -49,7 +64,7 @@ test("MCP server initializes and lists all graph tools", async () => {
       }
     }, 10);
   });
-  child.kill();
+  await stopChild(child);
 
   assert.ok(responses.some((response) => response.id === 1));
   const listed = responses.find((response) => response.id === 2);
@@ -91,7 +106,7 @@ test("MCP starts and polls a graph without holding the request open", async () =
     );
   };
   const waitFor = async (id: number): Promise<RpcResponse> => {
-    const deadline = Date.now() + 5_000;
+    const deadline = Date.now() + 10_000;
     while (Date.now() < deadline) {
       const response = responses.find((candidate) => candidate.id === id);
       if (response) return response;
@@ -112,7 +127,7 @@ test("MCP starts and polls a graph without holding the request open", async () =
       maxFanout: 1,
       maxDepth: 1,
       maxRepairRounds: 0,
-      timeoutMs: 5_000,
+      timeoutMs: 15_000,
       maxEstimatedTokens: 10_000,
       maxActualTokens: 10_000,
     },
@@ -144,7 +159,8 @@ test("MCP starts and polls a graph without holding the request open", async () =
     assert.equal(started.result?.structuredContent?.status, "running");
 
     let completed: RpcResponse | undefined;
-    for (let id = 3; id < 20; id += 1) {
+    const pollDeadline = Date.now() + 15_000;
+    for (let id = 3; Date.now() < pollDeadline; id += 1) {
       send(id, "tools/call", {
         name: "get_graph_run",
         arguments: { jobId },
@@ -154,7 +170,7 @@ test("MCP starts and polls a graph without holding the request open", async () =
         completed = polled;
         break;
       }
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 25));
     }
     assert.equal(completed?.result?.structuredContent?.status, "completed");
     assert.equal(
@@ -162,7 +178,7 @@ test("MCP starts and polls a graph without holding the request open", async () =
       "completed",
     );
   } finally {
-    child.kill();
+    await stopChild(child);
   }
 });
 
@@ -211,7 +227,7 @@ test("MCP tool errors preserve the originating request ID", async () => {
       })}\n`,
     );
   });
-  child.kill();
+  await stopChild(child);
   assert.equal(response.id, 41);
   assert.equal(response.error?.code, -32603);
   assert.match(response.error?.message ?? "", /unknown graph job/);

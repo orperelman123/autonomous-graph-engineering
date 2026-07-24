@@ -1,9 +1,46 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const execute = promisify(execFile);
+
+test("release version is synchronized across packages, plugins, and servers", async () => {
+  const manifests = await Promise.all(
+    [
+      "package.json",
+      "packages/prompt-refiner/package.json",
+      "packages/graph-orchestrator/package.json",
+      "plugins/prompt-refiner/package.json",
+      "plugins/prompt-refiner/plugin.json",
+      "plugins/prompt-refiner/.cursor-plugin/plugin.json",
+    ].map(async (path) =>
+      JSON.parse(await readFile(path, "utf8")) as {
+        version: string;
+        dependencies?: Record<string, string>;
+      },
+    ),
+  );
+  assert.deepEqual(
+    manifests.map((manifest) => manifest.version),
+    Array(manifests.length).fill("0.2.0"),
+  );
+  assert.equal(
+    manifests[2]?.dependencies?.[
+      "@autonomous-graph-engineering/prompt-refiner"
+    ],
+    "0.2.0",
+  );
+  for (const path of [
+    "packages/prompt-refiner/src/mcp-server.ts",
+    "packages/graph-orchestrator/src/mcp-server.ts",
+    "plugins/prompt-refiner/.cursor-plugin/plugin.json",
+    ".github/plugin/marketplace.json",
+  ]) {
+    assert.match(await readFile(path, "utf8"), /0\.2\.0/);
+  }
+});
 
 test("doctor returns a machine-readable readiness report", async () => {
   const { stdout } = await execute(

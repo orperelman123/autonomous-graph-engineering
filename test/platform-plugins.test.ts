@@ -58,6 +58,15 @@ test("Cursor marketplace and plugin manifests expose rules, skills, and MCP", as
 });
 
 test("Copilot plugin manifest connects skills, prompt hook, and MCP", async () => {
+  const marketplace = await json(".github/plugin/marketplace.json");
+  const marketplacePlugins = marketplace.plugins as Array<
+    Record<string, unknown>
+  >;
+  const marketplaceMetadata = marketplace.metadata as Record<string, unknown>;
+  assert.equal(marketplaceMetadata.version, "0.2.0");
+  assert.equal(marketplacePlugins[0]?.version, "0.2.0");
+  assert.equal(marketplacePlugins[0]?.source, "./plugins/prompt-refiner");
+
   const manifest = await json("plugins/prompt-refiner/plugin.json");
   assert.equal(manifest.name, "prompt-refiner");
   assert.equal(manifest.skills, "./skills/");

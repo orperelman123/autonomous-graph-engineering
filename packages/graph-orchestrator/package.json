@@ -1,6 +1,6 @@
 {
   "name": "@autonomous-graph-engineering/graph-engineer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Permission-safe autonomous graph orchestration for Codex and Claude Code.",
   "license": "MIT",
   "repository": {
@@ -40,7 +40,7 @@
     "eval": "tsx src/cli.ts eval"
   },
   "dependencies": {
-    "@autonomous-graph-engineering/prompt-refiner": "0.1.0"
+    "@autonomous-graph-engineering/prompt-refiner": "0.2.0"
   },
   "engines": {
     "node": ">=20"

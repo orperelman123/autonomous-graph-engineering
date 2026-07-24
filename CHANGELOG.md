@@ -4,6 +4,12 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-24
+
+- Add a versioned GitHub Copilot marketplace manifest and an evidence-gated
+  release, publication, marketplace, benchmark, promotion, and rollback guide.
+- Replace a timing-sensitive asynchronous MCP polling assertion with a bounded
+  deadline and wait for MCP test subprocesses to exit cleanly.
 - Add native Cursor and GitHub Copilot CLI plugin manifests, shared skills, MCP
   configuration, a Cursor always-on rule, and a Copilot prompt-transformation
   hook with `!raw` bypass.

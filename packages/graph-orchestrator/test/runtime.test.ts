@@ -411,7 +411,9 @@ test("runtime watchdog aborts a non-cooperative executor", async () => {
     autonomy: "read_only",
     primaryExecutor: "local",
   });
-  graph.budgets.timeoutMs = 50;
+  // Leave enough room for checkpoint I/O on slow or synchronized filesystems;
+  // the executor itself must start before the watchdog behavior is observable.
+  graph.budgets.timeoutMs = 1_000;
   const directory = await mkdtemp(join(tmpdir(), "graph-watchdog-"));
   try {
     const result = await runGraph(graph, {

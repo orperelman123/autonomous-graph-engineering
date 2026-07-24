@@ -164,6 +164,7 @@ flowchart LR
 ```
 
 See [Architecture](docs/architecture.md), [Installation](docs/installation.md), [Security model](docs/security-model.md), and [Interfaces](docs/interfaces.md).
+Maintainers should also follow the evidence-gated [Release process](docs/releasing.md).
 
 ## Repository layout
 
