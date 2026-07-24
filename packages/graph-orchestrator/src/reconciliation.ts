@@ -6,6 +6,7 @@ import type {
   ReconciliationRecord,
   TerminationEvidence,
 } from "./types.js";
+import { isValidNodeId, validateGraph } from "./validator.js";
 
 const SIDE_EFFECTING = new Set<NodePermission>([
   "write",
@@ -77,6 +78,17 @@ export async function reconcileCheckpoint(input: {
 }): Promise<GraphRunCheckpoint> {
   const now = input.now ?? (() => new Date());
   const checkpoint = await loadCheckpoint(input.directory, input.runId);
+  if (!isValidNodeId(input.nodeId)) {
+    throw new Error(`invalid or reserved node id: ${input.nodeId}`);
+  }
+  const validation = validateGraph(checkpoint.graph);
+  if (!validation.valid) {
+    throw new Error(
+      `checkpoint graph is invalid: ${validation.errors
+        .map((issue) => issue.code)
+        .join(", ")}`,
+    );
+  }
   const need = reconciliationNeeds(checkpoint).find(
     (entry) => entry.nodeId === input.nodeId,
   );
@@ -148,7 +160,12 @@ export async function reconcileCheckpoint(input: {
     state.completedAt = createdAt;
     delete state.error;
     delete state.failureKind;
-    checkpoint.outputs[input.nodeId] = output;
+    Object.defineProperty(checkpoint.outputs, input.nodeId, {
+      value: output,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   } else {
     state.state = "pending";
     delete state.output;
@@ -157,7 +174,7 @@ export async function reconcileCheckpoint(input: {
     delete state.startedAt;
     delete state.completedAt;
     delete state.usage;
-    delete checkpoint.outputs[input.nodeId];
+    Reflect.deleteProperty(checkpoint.outputs, input.nodeId);
   }
   checkpoint.status = "running";
   checkpoint.updatedAt = createdAt;

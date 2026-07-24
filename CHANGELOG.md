@@ -10,6 +10,8 @@ All notable changes are documented here.
   release, publication, marketplace, benchmark, promotion, and rollback guide.
 - Replace a timing-sensitive asynchronous MCP polling assertion with a bounded
   deadline and wait for MCP test subprocesses to exit cleanly.
+- Reject prototype-sensitive node identifiers at schema, validator, and
+  reconciliation boundaries to prevent dynamic-key prototype pollution.
 - Add native Cursor and GitHub Copilot CLI plugin manifests, shared skills, MCP
   configuration, a Cursor always-on rule, and a Copilot prompt-transformation
   hook with `!raw` bypass.

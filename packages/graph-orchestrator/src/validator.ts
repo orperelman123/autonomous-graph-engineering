@@ -8,6 +8,11 @@ import type {
 } from "./types.js";
 
 const NODE_ID = /^[a-z][a-z0-9_-]{0,63}$/;
+const RESERVED_NODE_IDS = new Set(["__proto__", "constructor", "prototype"]);
+
+export function isValidNodeId(value: string): boolean {
+  return NODE_ID.test(value) && !RESERVED_NODE_IDS.has(value);
+}
 const AUTONOMY_LEVELS = new Set([
   "plan_only",
   "read_only",
@@ -460,7 +465,7 @@ export function validateGraph(graph: GraphSpec): GraphValidationResult {
     });
   }
   for (const node of graph.nodes) {
-    if (!NODE_ID.test(node.id)) {
+    if (!isValidNodeId(node.id)) {
       errors.push({
         code: "INVALID_NODE_ID",
         nodeId: node.id,

@@ -101,6 +101,20 @@ test("rejects malformed budgets and unknown graph enums", () => {
   assert.ok(result.errors.some((issue) => issue.code === "INVALID_AUTONOMY"));
 });
 
+test("rejects prototype-sensitive node identifiers", () => {
+  for (const id of ["constructor", "prototype", "__proto__"]) {
+    const graph = planGraph({ prompt: "Explain this function." });
+    const node = graph.nodes[0];
+    assert.ok(node);
+    node.id = id;
+    const result = validateGraph(graph);
+    assert.equal(result.valid, false);
+    assert.ok(
+      result.errors.some((issue) => issue.code === "INVALID_NODE_ID"),
+    );
+  }
+});
+
 test("rejects maxParallel values that could stall or overload the scheduler", () => {
   for (const maxParallel of [0, -1, 101]) {
     const graph = planGraph({ prompt: "Explain this function." });

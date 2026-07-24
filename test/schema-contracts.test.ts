@@ -55,6 +55,17 @@ test("public graph schema and runtime validator agree on core budgets", async ()
       (issue) => issue.code === "INVALID_PARALLEL_BUDGET",
     ),
   );
+
+  const reservedIdGraph = planGraph({ prompt: "Explain this function." });
+  const firstNode = reservedIdGraph.nodes[0];
+  assert.ok(firstNode);
+  firstNode.id = "constructor";
+  assert.equal(validateSchema(reservedIdGraph), false);
+  assert.ok(
+    validateGraph(reservedIdGraph).errors.some(
+      (issue) => issue.code === "INVALID_NODE_ID",
+    ),
+  );
 });
 
 test("starter repository-audit graph satisfies both public contracts", async () => {

@@ -35,7 +35,11 @@
         "additionalProperties": false,
         "required": ["id", "label", "kind", "dependsOn", "permission"],
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "not": { "enum": ["constructor", "prototype"] }
+          },
           "label": { "type": "string", "minLength": 1 },
           "kind": { "enum": ["deterministic", "agent", "parallel_map", "reduce", "verifier", "human_gate"] },
           "dependsOn": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
