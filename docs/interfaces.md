@@ -124,6 +124,7 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 - [`prompt-refinement.schema.json`](../schemas/prompt-refinement.schema.json)
 - [`autonomous-graph.schema.json`](../schemas/autonomous-graph.schema.json)
 - [`doctor-report.schema.json`](../schemas/doctor-report.schema.json)
+- [`quickstart-report.schema.json`](../schemas/quickstart-report.schema.json)
 - [`portable-run-report.schema.json`](../schemas/portable-run-report.schema.json)
 - [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
 - [`provider-benchmark-report.schema.json`](../schemas/provider-benchmark-report.schema.json)

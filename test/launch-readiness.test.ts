@@ -163,7 +163,8 @@ test("quickstart remains credential-free and discoverable", async () => {
   const rootPackage = JSON.parse(await readFile("package.json", "utf8")) as {
     scripts?: Record<string, string>;
   };
-  assert.equal(rootPackage.scripts?.quickstart, "npm run doctor && npm run demo");
+  assert.equal(rootPackage.scripts?.quickstart, "node scripts/quickstart.mjs");
+  assert.equal(rootPackage.scripts?.prequickstart, "npm run build");
   assert.doesNotMatch(
     rootPackage.scripts?.quickstart ?? "",
     /(OPENAI|ANTHROPIC|ATBASH|--execute|install:)/,
