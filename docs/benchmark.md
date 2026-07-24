@@ -47,3 +47,58 @@ This is a provider-adapter contract test, not a live provider benchmark. A live
 outcome study still requires explicit approval because it can consume paid
 provider capacity; it should preregister tasks, models, repetitions, blinded
 graders, safety cases, and reporting before execution.
+
+## Preregistered live provider harness
+
+The repository includes an execution harness for OpenAI Responses and
+Anthropic Messages. It is dry-run-first and is never invoked by CI. Start by
+copying [`benchmark/live-plan.example.json`](../benchmark/live-plan.example.json)
+to a new plan. Replace every placeholder with frozen public tasks, exact model
+IDs, and current prices that you independently verify from the provider. The
+example intentionally contains zero prices and placeholder model IDs, so it
+fails validation until completed.
+
+Validate the plan and calculate its declared maximum cost without reading API
+keys or making network requests:
+
+```bash
+npm run benchmark:providers:live -- \
+  --plan benchmark/my-live-plan.json \
+  --output benchmark/results/my-dry-run.json
+```
+
+Output paths are create-only. Choose a new filename for every run; the harness
+will not overwrite prior evidence. The plan hash uses canonical key ordering,
+so formatting and object-key order do not change its identity. Local
+`benchmark/results/` is gitignored because reports can contain full provider
+responses. Publish a deliberately reviewed and redacted copy elsewhere only
+when the study protocol requires it.
+
+Live execution is intentionally a separate, explicit action:
+
+```bash
+OPENAI_API_KEY=... ANTHROPIC_API_KEY=... \
+npm run benchmark:providers:live -- \
+  --plan benchmark/my-live-plan.json \
+  --execute \
+  --confirm-budget-usd 1 \
+  --output benchmark/results/my-live-run.json
+```
+
+The confirmation must numerically equal `budgetUsd`. Requests run sequentially
+with a per-request timeout and a 2 MiB response limit. Provider keys are read
+only in live mode and are never included in reports. OpenAI requests set
+`store: false`. A provider error fails closed and marks cost accounting
+incomplete because a failed request can still incur provider-side charges.
+
+The declared maximum is a preregistered planning bound, not a provider billing
+hard stop. The harness verifies reported tokens and accounted cost after each
+response, but a provider may bill differently or change its reporting. Review
+the raw create-only report before publishing claims. Required-phrase scoring is
+transparent and deterministic, not blinded semantic grading.
+
+API behavior should be checked against the official
+[OpenAI Responses documentation](https://platform.openai.com/docs/api-reference/responses)
+and [Anthropic Messages documentation](https://platform.claude.com/docs/en/api/messages).
+Use each provider's current official pricing page when preparing a plan; the
+repository deliberately does not hardcode rates.
