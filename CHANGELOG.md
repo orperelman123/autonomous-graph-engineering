@@ -4,6 +4,14 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.3.2 - 2026-07-24
+
+- Introduce the public GraphVigil display name while preserving every existing
+  package, CLI, MCP, and plugin identifier for compatibility.
+- Add a canonical developer guide, documentation index, tracked-artifact
+  privacy test, and explicit proprietary-SDK boundary documentation.
+- Add a credential-free `npm run quickstart` and a task-oriented onboarding
+  guide for direct execution, bounded loops, graphs, host plugins, and Atbash.
 - Add a dry-run-first OpenAI Responses and Anthropic Messages benchmark
   harness with preregistered plans, explicit cost ceilings, create-only
   artifacts, provider-specific token accounting, strict schemas, and mocked
@@ -11,6 +19,8 @@ All notable changes are documented here.
 - Add a manual, OIDC-based npm trusted-publishing workflow with provenance,
   exact tag/version verification, ordered publication, integrity-checked
   retries, least-privilege permissions, and documented bootstrap gates.
+- Resolve Codex and Claude npm shims to native package entrypoints on Windows,
+  preventing graph and wrapper executors from failing with `spawn EPERM`.
 
 ## 0.3.1 - 2026-07-24
 

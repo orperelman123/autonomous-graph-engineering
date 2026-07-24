@@ -1,15 +1,15 @@
 {
   "name": "prompt-refiner",
   "version": "0.1.0+codex.20260724103010",
-  "description": "Improve requests and execute complex work as validated, permission-safe autonomous graphs.",
+  "description": "GraphVigil improves requests and executes complex work as validated, permission-safe autonomous graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"
   },
   "skills": "./skills/",
   "interface": {
-    "displayName": "Prompt Refiner",
-    "shortDescription": "Refine prompts and run safe agent graphs.",
-    "longDescription": "Prompt Refiner preserves the original request, then Graph Engineer decomposes complex work, runs independent nodes, verifies outputs, caps repair, and gates consequential actions.",
+    "displayName": "GraphVigil",
+    "shortDescription": "Refine prompts and run bounded agent graphs.",
+    "longDescription": "GraphVigil preserves the original request, decomposes complex work, runs independent nodes, verifies outputs, caps repair, and gates consequential actions.",
     "developerName": "Autonomous Graph Engineering contributors",
     "category": "Productivity",
     "capabilities": [

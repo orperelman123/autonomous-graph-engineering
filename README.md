@@ -2,9 +2,14 @@
 
 # Autonomous Graph Engineering
 
+**GraphVigil** is the public plugin name: bounded autonomous engineering with
+prompt refinement, validation, independent verification, and explicit gates.
+The repository, npm scopes, CLI commands, MCP server names, and plugin IDs stay
+stable for compatibility.
+
 **Turn a request into a bounded, verified execution graph—not an agent that loops forever.**
 
-[Quick start](#quick-start) · [Why graphs?](docs/why-graphs.md) · [Evaluation](docs/evaluation.md) · [Roadmap](ROADMAP.md)
+[Getting started](docs/getting-started.md) · [Why graphs?](docs/why-graphs.md) · [Developer guide](docs/development.md) · [Roadmap](ROADMAP.md)
 
 </div>
 
@@ -34,8 +39,7 @@ This project implements public agent-engineering patterns. It is not represented
 git clone https://github.com/orperelman123/autonomous-graph-engineering.git
 cd autonomous-graph-engineering
 npm ci
-npm run doctor
-npm run demo
+npm run quickstart
 
 # Preserve intent and compile a safer execution brief.
 npx prompt-refiner refine "Review auth, keep scope fixed, and verify every claim"
@@ -90,6 +94,9 @@ They are complements, not competitors:
 This project places a **bounded repair loop inside a validated graph**. See [Why graphs, loops, and gates belong together](docs/why-graphs.md).
 
 ## Quick start
+
+For the shortest user, developer, host-plugin, and Atbash paths, use the
+[Getting started guide](docs/getting-started.md).
 
 Requirements:
 
@@ -168,7 +175,12 @@ flowchart LR
   H["Fingerprint-bound human gate"] --> C["Consequential action"]
 ```
 
-See [Architecture](docs/architecture.md), [Installation](docs/installation.md), [Security model](docs/security-model.md), [External security provider](docs/external-security-provider.md), and [Interfaces](docs/interfaces.md).
+Start with the [documentation index](docs/README.md) and
+[developer guide](docs/development.md). See
+[Architecture](docs/architecture.md), [Installation](docs/installation.md),
+[Security model](docs/security-model.md),
+[External security provider](docs/external-security-provider.md), and
+[Interfaces](docs/interfaces.md).
 Maintainers should also follow the evidence-gated [Release process](docs/releasing.md).
 
 ## Repository layout
@@ -199,7 +211,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 115 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
+The current suite contains 117 unit, interface, integration, launch-readiness, and schema-contract tests, 20 adversarial graph evaluations, 27 prompt-refinement evaluations, and a two-case repository semantic corpus. The checks are deterministic by default and do not require provider credentials. See [Evaluation](docs/evaluation.md) and the [benchmark methodology](docs/benchmark.md) for what they prove—and what they do not.
 
 ## Contributing
 

@@ -3,6 +3,12 @@ export {
   assertPermissionPreservation,
   renderEffectivePrompt,
 } from "./compiler.js";
+export { resolveAgentCommand } from "./agent-command.js";
+export type {
+  AgentCommand,
+  AgentCommandOptions,
+  SupportedAgent,
+} from "./agent-command.js";
 export { collectContext } from "./context.js";
 export {
   buildHookFailureResponse,

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { resolveAgentCommand } from "./agent-command.js";
 import { collectContext } from "./context.js";
 import { refinePrompt } from "./provider.js";
 
@@ -31,13 +32,19 @@ export async function runAgent(
     );
     return 3;
   }
-  const command = agent;
+  const configured =
+    agent === "codex"
+      ? process.env.CODEX_EXECUTABLE
+      : process.env.CLAUDE_EXECUTABLE;
+  const executable = resolveAgentCommand(agent, {
+    ...(configured ? { configured } : {}),
+  });
   const args =
     agent === "codex"
       ? ["exec", refined.effectivePrompt]
       : ["-p", refined.effectivePrompt, "--output-format", "json"];
   return await new Promise<number>((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(executable.command, [...executable.prefix, ...args], {
       cwd: process.cwd(),
       stdio: "inherit",
       shell: false,
