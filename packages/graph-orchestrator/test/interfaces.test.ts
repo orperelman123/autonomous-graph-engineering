@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { planGraph } from "../src/planner.js";
+import { graphFingerprint } from "../src/runtime.js";
 import { startGraphServer } from "../src/server.js";
+import type { GraphRunCheckpoint } from "../src/types.js";
 
 async function stopChild(child: ReturnType<typeof spawn>): Promise<void> {
   if (child.exitCode !== null) return;
@@ -17,6 +24,13 @@ async function stopChild(child: ReturnType<typeof spawn>): Promise<void> {
     child.kill("SIGKILL");
     await exited;
   }
+}
+
+async function waitForExit(child: ReturnType<typeof spawn>): Promise<number> {
+  return await new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => resolve(code ?? -1));
+  });
 }
 
 test("MCP server initializes and lists all graph tools", async () => {
@@ -231,6 +245,82 @@ test("MCP tool errors preserve the originating request ID", async () => {
   assert.equal(response.id, 41);
   assert.equal(response.error?.code, -32603);
   assert.match(response.error?.message ?? "", /unknown graph job/);
+});
+
+test("CLI resume writes back to its configured checkpoint directory", async () => {
+  const auditDirectory = await mkdtemp(join(tmpdir(), "graph-cli-audit-"));
+  const workingDirectory = await mkdtemp(join(tmpdir(), "graph-cli-cwd-"));
+  const runId = "configured-resume";
+  const graph = planGraph({
+    prompt: "Explain this function.",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  const checkpoint: GraphRunCheckpoint = {
+    version: "1.0",
+    graph,
+    graphHash: graphFingerprint(graph),
+    runId,
+    status: "failed",
+    outputs: { execute: { leaked: "legacy rejected output" } },
+    nodes: {
+      execute: {
+        nodeId: "execute",
+        state: "failed",
+        output: { leaked: "legacy rejected output" },
+        error: "actual token use 500002 exceeds maxActualTokens 500000",
+        failureKind: "executor",
+        usage: { inputTokens: 500_001, outputTokens: 1 },
+      },
+      verify: { nodeId: "verify", state: "pending" },
+    },
+    repairRounds: 0,
+    usage: { inputTokens: 500_001, outputTokens: 1 },
+    startedAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+    eventSequence: 0,
+  };
+  const checkpointPath = join(
+    auditDirectory,
+    `${runId}.checkpoint.json`,
+  );
+  await writeFile(checkpointPath, JSON.stringify(checkpoint), "utf8");
+  const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
+  const tsxLoader = pathToFileURL(
+    createRequire(import.meta.url).resolve("tsx"),
+  ).href;
+  try {
+    const child = spawn(
+      process.execPath,
+      ["--import", tsxLoader, cliPath, "resume", runId],
+      {
+        cwd: workingDirectory,
+        env: {
+          ...process.env,
+          GRAPH_ENGINEER_AUDIT_DIRECTORY: auditDirectory,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    const exitCode = await waitForExit(child);
+    assert.equal(exitCode, 1, stderr);
+    const resumed = JSON.parse(
+      await readFile(checkpointPath, "utf8"),
+    ) as GraphRunCheckpoint;
+    assert.equal(resumed.status, "failed");
+    assert.equal(resumed.eventSequence, 2, stderr);
+    assert.equal(Object.hasOwn(resumed.outputs, "execute"), false);
+    assert.equal(resumed.nodes.execute?.failureKind, "budget");
+    await assert.rejects(access(join(workingDirectory, ".graph-runs")));
+  } finally {
+    await rm(auditDirectory, { recursive: true, force: true });
+    await rm(workingDirectory, { recursive: true, force: true });
+  }
 });
 
 test("HTTP server plans and validates graphs on loopback", async () => {

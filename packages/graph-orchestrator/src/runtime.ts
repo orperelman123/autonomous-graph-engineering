@@ -99,15 +99,23 @@ function combinedUsage(...values: Array<TokenUsage | undefined>): TokenUsage {
   return result;
 }
 
-function assertUsageBudget(graph: GraphSpec, usage: TokenUsage): void {
+class UsageBudgetExceededError extends Error {}
+
+function usageExceedsBudget(graph: GraphSpec, usage: TokenUsage): boolean {
   const consumed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
   const budget =
     graph.budgets.maxActualTokens ?? graph.budgets.maxEstimatedTokens;
-  if (consumed > budget) {
-    throw new Error(
-      `actual token use ${consumed} exceeds maxActualTokens ${budget}`,
-    );
-  }
+  return consumed > budget;
+}
+
+function assertUsageBudget(graph: GraphSpec, usage: TokenUsage): void {
+  if (!usageExceedsBudget(graph, usage)) return;
+  const consumed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+  const budget =
+    graph.budgets.maxActualTokens ?? graph.budgets.maxEstimatedTokens;
+  throw new UsageBudgetExceededError(
+    `actual token use ${consumed} exceeds maxActualTokens ${budget}`,
+  );
 }
 
 export function graphFingerprint(graph: GraphSpec): string {
@@ -444,6 +452,8 @@ export async function runGraph(
     resume?.eventSequence ?? 0,
   );
   const checkpointStore = new CheckpointStore(auditDirectory, runId);
+  const resumeOverBudget =
+    resume !== undefined && usageExceedsBudget(graph, resume.usage);
   const nodes: Record<string, NodeRunResult> = resume
     ? Object.fromEntries(
         graph.nodes.map((node) => {
@@ -451,7 +461,26 @@ export async function runGraph(
           if (prior?.state === "completed") {
             return [node.id, { ...prior }];
           }
-          return [node.id, { nodeId: node.id, state: "pending" as const }];
+          if (prior && resumeOverBudget) {
+            const { output: _rejectedOutput, ...preserved } = prior;
+            return [
+              node.id,
+              {
+                ...preserved,
+                ...(prior.state === "failed"
+                  ? { failureKind: "budget" as const }
+                  : {}),
+              },
+            ];
+          }
+          return [
+            node.id,
+            {
+              nodeId: node.id,
+              state: "pending" as const,
+              ...(prior?.usage ? { usage: { ...prior.usage } } : {}),
+            },
+          ];
         }),
       )
     : Object.fromEntries(
@@ -513,6 +542,11 @@ export async function runGraph(
   await saveCheckpoint("running");
 
   try {
+    // A checkpoint that has already exhausted its immutable graph budget must
+    // not replay provider work. Preserve its failed node state and accounting,
+    // while filtering any legacy output that was recorded before budget
+    // validation became atomic.
+    assertUsageBudget(graph, usage);
     const pending = new Set(
       validation.topologicalOrder.filter(
         (nodeId) => nodes[nodeId]?.state !== "completed",
@@ -565,10 +599,12 @@ export async function runGraph(
               runLimited,
               state.attemptId,
             );
-            outputs[node.id] = execution.output;
-            if (execution.usage) state.usage = execution.usage;
             usage = combinedUsage(usage, execution.usage);
+            if (execution.usage) {
+              state.usage = combinedUsage(state.usage, execution.usage);
+            }
             assertUsageBudget(graph, usage);
+            outputs[node.id] = execution.output;
             state.state = "completed";
             state.output = outputs[node.id];
             state.completedAt = now().toISOString();
@@ -607,7 +643,9 @@ export async function runGraph(
             state.state = "failed";
             state.error = (error as Error).message;
             state.failureKind =
-              error instanceof ExecutorTimeoutError ||
+              error instanceof UsageBudgetExceededError
+                ? "budget"
+                : error instanceof ExecutorTimeoutError ||
               /timed out/i.test(state.error)
                 ? "timeout"
                 : "executor";
@@ -720,6 +758,13 @@ export async function runGraph(
           }),
         );
         usage = combinedUsage(usage, repairExecution.usage);
+        const candidateState = nodes[policy.candidateNodeId];
+        if (candidateState && repairExecution.usage) {
+          candidateState.usage = combinedUsage(
+            candidateState.usage,
+            repairExecution.usage,
+          );
+        }
         assertUsageBudget(graph, usage);
         candidate = validatedOutput(
           candidateNode,
@@ -744,6 +789,13 @@ export async function runGraph(
           }),
         );
         usage = combinedUsage(usage, verifyExecution.usage);
+        const verifierState = nodes[policy.verifierNodeId];
+        if (verifierState && verifyExecution.usage) {
+          verifierState.usage = combinedUsage(
+            verifierState.usage,
+            verifyExecution.usage,
+          );
+        }
         assertUsageBudget(graph, usage);
         verifierOutput = validatedOutput(
           verifierNode,
@@ -751,22 +803,12 @@ export async function runGraph(
         );
         outputs[policy.candidateNodeId] = candidate;
         outputs[policy.verifierNodeId] = verifierOutput;
-        const candidateState = nodes[policy.candidateNodeId];
         if (candidateState) {
           candidateState.output = candidate;
-          candidateState.usage = combinedUsage(
-            candidateState.usage,
-            repairExecution.usage,
-          );
           candidateState.completedAt = now().toISOString();
         }
-        const verifierState = nodes[policy.verifierNodeId];
         if (verifierState) {
           verifierState.output = verifierOutput;
-          verifierState.usage = combinedUsage(
-            verifierState.usage,
-            verifyExecution.usage,
-          );
           verifierState.completedAt = now().toISOString();
         }
         await store.append(

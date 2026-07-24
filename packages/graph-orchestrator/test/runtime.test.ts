@@ -698,9 +698,11 @@ test("parses reliable Codex and Claude usage envelopes", () => {
 });
 
 test("stops when actual provider usage exceeds the graph token budget", async () => {
+  let calls = 0;
   class OverBudgetExecutor implements GraphExecutor {
     readonly name = "over-budget";
     async execute(): Promise<AgentExecutionResult> {
+      calls += 1;
       return {
         output: { completed: true },
         usage: { inputTokens: 500_001, outputTokens: 1 },
@@ -720,6 +722,45 @@ test("stops when actual provider usage exceeds the graph token budget", async ()
     });
     assert.equal(result.status, "failed");
     assert.match(result.error ?? "", /actual token use 500002 exceeds/);
+    assert.equal(calls, 1);
+    assert.equal(Object.hasOwn(result.outputs, "execute"), false);
+    assert.equal(result.nodes.execute?.state, "failed");
+    assert.equal(result.nodes.execute?.failureKind, "budget");
+    assert.deepEqual(result.nodes.execute?.usage, {
+      inputTokens: 500_001,
+      outputTokens: 1,
+    });
+    assert.deepEqual(result.usage, {
+      inputTokens: 500_001,
+      outputTokens: 1,
+    });
+
+    const checkpoint = await loadCheckpoint(directory, result.runId);
+    assert.equal(Object.hasOwn(checkpoint.outputs, "execute"), false);
+    assert.equal(checkpoint.nodes.execute?.failureKind, "budget");
+
+    // Legacy checkpoints could commit the rejected output before enforcing the
+    // budget and classified the failure as a generic executor error.
+    checkpoint.outputs.execute = { leaked: "legacy rejected output" };
+    checkpoint.nodes.execute!.output = checkpoint.outputs.execute;
+    checkpoint.nodes.execute!.failureKind = "executor";
+    const resumed = await runGraph(graph, {
+      executors: { local: new OverBudgetExecutor() },
+      auditDirectory: directory,
+      resume: checkpoint,
+    });
+    assert.equal(resumed.status, "failed");
+    assert.match(resumed.error ?? "", /actual token use 500002 exceeds/);
+    assert.equal(calls, 1);
+    assert.equal(Object.hasOwn(resumed.outputs, "execute"), false);
+    assert.equal(resumed.nodes.execute?.state, "failed");
+    assert.equal(resumed.nodes.execute?.failureKind, "budget");
+    assert.equal(resumed.nodes.execute?.output, undefined);
+    assert.deepEqual(
+      resumed.nodes.execute?.usage,
+      checkpoint.nodes.execute?.usage,
+    );
+    assert.deepEqual(resumed.usage, checkpoint.usage);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

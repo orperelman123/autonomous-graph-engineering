@@ -24,13 +24,13 @@ test("release version is synchronized across packages, plugins, and servers", as
   );
   assert.deepEqual(
     manifests.map((manifest) => manifest.version),
-    Array(manifests.length).fill("0.3.0"),
+    Array(manifests.length).fill("0.3.1"),
   );
   assert.equal(
     manifests[2]?.dependencies?.[
       "@autonomous-graph-engineering/prompt-refiner"
     ],
-    "0.3.0",
+    "0.3.1",
   );
   for (const path of [
     "packages/prompt-refiner/src/mcp-server.ts",
@@ -38,7 +38,7 @@ test("release version is synchronized across packages, plugins, and servers", as
   ]) {
     assert.match(
       await readFile(path, "utf8"),
-      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.0"\s*\}/,
+      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.1"\s*\}/,
     );
   }
   const marketplace = JSON.parse(
@@ -47,8 +47,8 @@ test("release version is synchronized across packages, plugins, and servers", as
     metadata: { version: string };
     plugins: Array<{ version: string }>;
   };
-  assert.equal(marketplace.metadata.version, "0.3.0");
-  assert.equal(marketplace.plugins[0]?.version, "0.3.0");
+  assert.equal(marketplace.metadata.version, "0.3.1");
+  assert.equal(marketplace.plugins[0]?.version, "0.3.1");
 });
 
 test("doctor returns a machine-readable readiness report", async () => {

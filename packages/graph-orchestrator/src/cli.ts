@@ -70,6 +70,8 @@ function promptArgs(args: string[]): string[] {
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
   if (!command) usage();
+  const configuredAuditDirectory =
+    process.env.GRAPH_ENGINEER_AUDIT_DIRECTORY;
   if (command === "doctor") {
     const root = option(args, "--root");
     const pluginDirectory = option(args, "--plugin-dir");
@@ -257,6 +259,9 @@ async function main(): Promise<void> {
     executors: defaultExecutors(),
     approvals,
     ...(resume ? { resume } : {}),
+    ...(configuredAuditDirectory
+      ? { auditDirectory: configuredAuditDirectory }
+      : {}),
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   process.exitCode =

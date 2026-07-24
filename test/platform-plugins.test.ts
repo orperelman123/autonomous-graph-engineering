@@ -63,8 +63,8 @@ test("Copilot plugin manifest connects skills, prompt hook, and MCP", async () =
     Record<string, unknown>
   >;
   const marketplaceMetadata = marketplace.metadata as Record<string, unknown>;
-  assert.equal(marketplaceMetadata.version, "0.3.0");
-  assert.equal(marketplacePlugins[0]?.version, "0.3.0");
+  assert.equal(marketplaceMetadata.version, "0.3.1");
+  assert.equal(marketplacePlugins[0]?.version, "0.3.1");
   assert.equal(marketplacePlugins[0]?.source, "./plugins/prompt-refiner");
 
   const manifest = await json("plugins/prompt-refiner/plugin.json");

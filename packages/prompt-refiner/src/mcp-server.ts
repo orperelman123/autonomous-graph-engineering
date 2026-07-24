@@ -65,7 +65,7 @@ async function handle(request: JsonRpcRequest): Promise<void> {
         (request.params?.protocolVersion as string | undefined) ??
         "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "prompt-refiner", version: "0.3.0" },
+      serverInfo: { name: "prompt-refiner", version: "0.3.1" },
       instructions:
         "Use refine_prompt before substantive work. Preserve the original request and never expand permissions.",
     });
