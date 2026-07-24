@@ -1,5 +1,8 @@
 # Interfaces
 
+For repository setup, source ownership, tests, and contract-change workflow,
+see the [developer guide](development.md).
+
 ## Prompt Refiner CLI
 
 ```bash

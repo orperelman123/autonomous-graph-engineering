@@ -24,13 +24,13 @@ test("release version is synchronized across packages, plugins, and servers", as
   );
   assert.deepEqual(
     manifests.map((manifest) => manifest.version),
-    Array(manifests.length).fill("0.3.1"),
+    Array(manifests.length).fill("0.3.2"),
   );
   assert.equal(
     manifests[2]?.dependencies?.[
       "@autonomous-graph-engineering/prompt-refiner"
     ],
-    "0.3.1",
+    "0.3.2",
   );
   for (const path of [
     "packages/prompt-refiner/src/mcp-server.ts",
@@ -38,7 +38,7 @@ test("release version is synchronized across packages, plugins, and servers", as
   ]) {
     assert.match(
       await readFile(path, "utf8"),
-      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.1"\s*\}/,
+      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.2"\s*\}/,
     );
   }
   const marketplace = JSON.parse(
@@ -47,8 +47,48 @@ test("release version is synchronized across packages, plugins, and servers", as
     metadata: { version: string };
     plugins: Array<{ version: string }>;
   };
-  assert.equal(marketplace.metadata.version, "0.3.1");
-  assert.equal(marketplace.plugins[0]?.version, "0.3.1");
+  assert.equal(marketplace.metadata.version, "0.3.2");
+  assert.equal(marketplace.plugins[0]?.version, "0.3.2");
+});
+
+test("repository excludes credential artifacts and vendored Atbash source", async () => {
+  const tracked = (await execute("git", ["ls-files", "-z"], {
+    cwd: process.cwd(),
+  })).stdout
+    .split("\0")
+    .filter(Boolean)
+    .map((path) => path.replaceAll("\\", "/"));
+  const forbidden = tracked.filter(
+    (path) =>
+      /(^|\/)(?:node_modules|vendor\/atbash|benchmark\/results|\.graph-runs)\//i.test(
+        path,
+      ) ||
+      /\.(?:pem|key|p12|pfx|jks|keystore)$/i.test(path) ||
+      (/(^|\/)\.env(?:\.|$)/i.test(path) && !path.endsWith(".example.env")),
+  );
+  assert.deepEqual(forbidden, []);
+
+  const graphPackage = JSON.parse(
+    await readFile("packages/graph-orchestrator/package.json", "utf8"),
+  ) as {
+    files?: string[];
+    optionalDependencies?: Record<string, string>;
+  };
+  assert.deepEqual(graphPackage.files, ["dist"]);
+  assert.equal(graphPackage.optionalDependencies?.["@atbash/sdk"], "0.6.0");
+  assert.equal(
+    tracked.some(
+      (path) =>
+        /(?:^|\/)(?:node_modules\/@atbash|vendor\/atbash)(?:\/|$)/i.test(path),
+    ),
+    false,
+  );
+
+  const lock = await readFile("package-lock.json", "utf8");
+  assert.match(
+    lock,
+    /https:\/\/registry\.npmjs\.org\/@atbash\/sdk\/-\/sdk-0\.6\.0\.tgz/,
+  );
 });
 
 test("npm trusted publishing is manual, least-privilege, and retry-safe", async () => {
@@ -85,12 +125,12 @@ test("npm trusted publishing is manual, least-privilege, and retry-safe", async 
 
   const verified = await execute(
     process.execPath,
-    ["scripts/verify-release-version.mjs", "v0.3.1"],
+    ["scripts/verify-release-version.mjs", "v0.3.2"],
     { cwd: process.cwd() },
   );
   assert.equal(
     (JSON.parse(verified.stdout) as { version: string }).version,
-    "0.3.1",
+    "0.3.2",
   );
   await assert.rejects(
     execute(
@@ -116,6 +156,21 @@ test("doctor returns a machine-readable readiness report", async () => {
   assert.equal(report.summary.failures, 0);
   assert.ok(report.checks.some((check) => check.id === "node-version"));
   assert.ok(report.checks.some((check) => check.id === "local-plugin"));
+});
+
+test("quickstart remains credential-free and discoverable", async () => {
+  const rootPackage = JSON.parse(await readFile("package.json", "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  assert.equal(rootPackage.scripts?.quickstart, "npm run doctor && npm run demo");
+  assert.doesNotMatch(
+    rootPackage.scripts?.quickstart ?? "",
+    /(OPENAI|ANTHROPIC|ATBASH|--execute|install:)/,
+  );
+  assert.match(
+    await readFile("docs/getting-started.md", "utf8"),
+    /npm run quickstart/,
+  );
 });
 
 test("offline control-plane benchmark is reproducible", async () => {

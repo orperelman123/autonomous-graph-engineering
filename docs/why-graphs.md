@@ -2,6 +2,25 @@
 
 Graph engineering does not replace loop engineering. It gives the loop a safe place to operate.
 
+## Relation to broader graph engineering
+
+LangChain's retrospective,
+[3 Years of Graph Engineering with LangGraph](https://www.langchain.com/blog/3-years-of-graph-engineering-with-langgraph),
+describes graphs as a way to mix deterministic paths with agentic steps, notes
+that a loop is a simple cyclic graph, emphasizes dynamic transitions, and warns
+that some open-ended work is better served by an agent harness than a
+predefined workflow. Those are useful design principles, not evidence that
+every task should become a graph.
+
+GraphVigil makes a narrower safety tradeoff. Its submitted orchestration
+topology must be acyclic and validated before execution. Runtime variability is
+expressed through bounded `parallel_map` fan-out; iteration is expressed through
+a separately declared, verifier-controlled repair policy; pauses use
+fingerprint-bound gates and persisted resume state. Keeping topology, repair,
+and approval separate makes budgets and replay rules mechanically enforceable.
+This is not an implementation of LangGraph and does not claim to reproduce its
+general cyclic state-machine model.
+
 ## The three control structures
 
 ### Graph
@@ -52,4 +71,5 @@ flowchart LR
 - Use a graph when work has independent investigations, dependencies, cross-checks, or different permissions.
 - Add a human gate only where the graph crosses into consequential action.
 
-That combination is the core design of Autonomous Graph Engineering.
+That combination is the core design of GraphVigil and Autonomous Graph
+Engineering.

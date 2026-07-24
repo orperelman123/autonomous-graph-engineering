@@ -3,12 +3,12 @@
   "owner": {
     "name": "Autonomous Graph Engineering contributors"
   },
-  "description": "Prompt refinement and permission-safe autonomous engineering graphs.",
+  "description": "GraphVigil prompt refinement and permission-safe autonomous engineering graphs.",
   "plugins": [
     {
       "name": "prompt-refiner",
       "source": "./plugins/prompt-refiner",
-      "description": "Improve prompts, enforce hook gates, and run verified engineering graphs."
+      "description": "GraphVigil improves prompts, enforces hook gates, and runs verified engineering graphs."
     }
   ]
 }

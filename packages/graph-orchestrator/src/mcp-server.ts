@@ -201,7 +201,7 @@ async function handle(request: Request): Promise<void> {
         (request.params?.protocolVersion as string | undefined) ??
         "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "graph-engineer", version: "0.3.1" },
+      serverInfo: { name: "graph-engineer", version: "0.3.2" },
       instructions:
         "Plan first. Validate every graph. Never expand permissions. Require human gates for consequential actions.",
     });

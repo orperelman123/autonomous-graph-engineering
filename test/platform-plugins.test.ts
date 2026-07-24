@@ -46,6 +46,7 @@ test("Cursor marketplace and plugin manifests expose rules, skills, and MCP", as
 
   const manifest = await json("plugins/prompt-refiner/.cursor-plugin/plugin.json");
   assert.equal(manifest.name, "prompt-refiner");
+  assert.equal(manifest.displayName, "GraphVigil");
   assert.equal(manifest.rules, "./rules/");
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.mcpServers, "./cursor.mcp.json");
@@ -63,12 +64,13 @@ test("Copilot plugin manifest connects skills, prompt hook, and MCP", async () =
     Record<string, unknown>
   >;
   const marketplaceMetadata = marketplace.metadata as Record<string, unknown>;
-  assert.equal(marketplaceMetadata.version, "0.3.1");
-  assert.equal(marketplacePlugins[0]?.version, "0.3.1");
+  assert.equal(marketplaceMetadata.version, "0.3.2");
+  assert.equal(marketplacePlugins[0]?.version, "0.3.2");
   assert.equal(marketplacePlugins[0]?.source, "./plugins/prompt-refiner");
 
   const manifest = await json("plugins/prompt-refiner/plugin.json");
   assert.equal(manifest.name, "prompt-refiner");
+  assert.match(String(manifest.description), /GraphVigil/);
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.hooks, "./hooks/copilot-hooks.json");
   assert.equal(manifest.mcpServers, "./copilot.mcp.json");

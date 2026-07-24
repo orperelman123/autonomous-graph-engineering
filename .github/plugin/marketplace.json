@@ -4,14 +4,14 @@
     "name": "Autonomous Graph Engineering contributors"
   },
   "metadata": {
-    "description": "Intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
-    "version": "0.3.1"
+    "description": "GraphVigil: intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
+    "version": "0.3.2"
   },
   "plugins": [
     {
       "name": "prompt-refiner",
-      "description": "Improve prompts and run bounded, validated engineering graphs.",
-      "version": "0.3.1",
+      "description": "GraphVigil improves prompts and runs bounded, validated engineering graphs.",
+      "version": "0.3.2",
       "source": "./plugins/prompt-refiner"
     }
   ]

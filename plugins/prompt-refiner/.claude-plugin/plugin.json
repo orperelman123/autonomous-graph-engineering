@@ -1,6 +1,6 @@
 {
   "name": "prompt-refiner",
-  "description": "Improve prompts without changing intent or expanding permissions.",
+  "description": "GraphVigil improves prompts without changing intent, then runs bounded engineering graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"
   }

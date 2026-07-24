@@ -1,7 +1,7 @@
 {
   "name": "prompt-refiner",
-  "version": "0.3.1",
-  "description": "Intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
+  "version": "0.3.2",
+  "description": "GraphVigil: intent-preserving prompt refinement and permission-safe autonomous engineering graphs.",
   "author": {
     "name": "Autonomous Graph Engineering contributors"
   },

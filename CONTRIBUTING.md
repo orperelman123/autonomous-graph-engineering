@@ -6,6 +6,10 @@ Choose a bounded contribution type and its acceptance criteria in [Community con
 
 ## Development setup
 
+Use the canonical [developer guide](docs/development.md) for the source map,
+focused-test workflow, public-contract checklist, security review, and release
+preparation.
+
 ```bash
 npm ci
 npm run check

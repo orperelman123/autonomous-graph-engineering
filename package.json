@@ -1,8 +1,8 @@
 {
   "name": "autonomous-graph-engineering",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
-  "description": "Permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, and GitHub Copilot.",
+  "description": "GraphVigil: permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, and GitHub Copilot.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -23,6 +23,7 @@
     "predoctor": "npm run build",
     "doctor": "node scripts/doctor.mjs",
     "demo": "node scripts/demo.mjs",
+    "quickstart": "npm run doctor && npm run demo",
     "prebenchmark": "npm run build",
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:providers:offline": "npm run build --workspace @autonomous-graph-engineering/graph-engineer && node scripts/provider-benchmark.mjs",
