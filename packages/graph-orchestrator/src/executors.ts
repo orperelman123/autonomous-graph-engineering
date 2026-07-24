@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { resolveAgentCommand } from "@autonomous-graph-engineering/prompt-refiner";
 import type {
   AgentExecutionRequest,
   AgentExecutionResult,
@@ -50,29 +49,6 @@ function codexArgs(request: AgentExecutionRequest): string[] {
   ];
 }
 
-function codexCommand(): { command: string; prefix: string[] } {
-  const configured = process.env.CODEX_EXECUTABLE;
-  if (configured) {
-    return configured.endsWith(".js")
-      ? { command: process.execPath, prefix: [configured] }
-      : { command: configured, prefix: [] };
-  }
-  if (process.platform === "win32") {
-    const entrypoint = join(
-      dirname(process.execPath),
-      "node_modules",
-      "@openai",
-      "codex",
-      "bin",
-      "codex.js",
-    );
-    if (existsSync(entrypoint)) {
-      return { command: process.execPath, prefix: [entrypoint] };
-    }
-  }
-  return { command: "codex", prefix: [] };
-}
-
 function claudeArgs(request: AgentExecutionRequest): string[] {
   const permissionMode =
     request.permission === "none" || request.permission === "read"
@@ -97,29 +73,6 @@ function claudeArgs(request: AgentExecutionRequest): string[] {
       ? ["--tools", "Read,Glob,Grep"]
       : []),
   ];
-}
-
-function claudeCommand(): { command: string; prefix: string[] } {
-  const configured = process.env.CLAUDE_EXECUTABLE;
-  if (configured) {
-    return configured.endsWith(".js") || configured.endsWith(".cjs")
-      ? { command: process.execPath, prefix: [configured] }
-      : { command: configured, prefix: [] };
-  }
-  if (process.platform === "win32") {
-    const executable = join(
-      dirname(process.execPath),
-      "node_modules",
-      "@anthropic-ai",
-      "claude-code",
-      "bin",
-      "claude.exe",
-    );
-    if (existsSync(executable)) {
-      return { command: executable, prefix: [] };
-    }
-  }
-  return { command: "claude", prefix: [] };
 }
 
 async function spawnCapture(
@@ -382,7 +335,10 @@ export class CodexCliExecutor implements GraphExecutor {
   async execute(
     request: AgentExecutionRequest,
   ): Promise<AgentExecutionResult> {
-    const executable = codexCommand();
+    const configured = process.env.CODEX_EXECUTABLE;
+    const executable = resolveAgentCommand("codex", {
+      ...(configured ? { configured } : {}),
+    });
     const output = await spawnCapture(
       executable.command,
       [...executable.prefix, ...codexArgs(request)],
@@ -409,7 +365,10 @@ export class ClaudeCliExecutor implements GraphExecutor {
   async execute(
     request: AgentExecutionRequest,
   ): Promise<AgentExecutionResult> {
-    const executable = claudeCommand();
+    const configured = process.env.CLAUDE_EXECUTABLE;
+    const executable = resolveAgentCommand("claude", {
+      ...(configured ? { configured } : {}),
+    });
     const output = await spawnCapture(
       executable.command,
       [...executable.prefix, ...claudeArgs(request)],

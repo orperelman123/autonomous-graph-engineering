@@ -126,6 +126,15 @@ npx graph-engineer grade <run-id>
 Interrupted read-only nodes may retry. Ambiguous write or external nodes require
 operator reconciliation; they are never replayed automatically.
 
+### Windows executor troubleshooting
+
+GraphVigil resolves npm-installed Codex and Claude shims to their native
+JavaScript or executable entrypoints before spawning them. If automatic
+discovery is unavailable, set `CODEX_EXECUTABLE` or `CLAUDE_EXECUTABLE` to a
+native `.exe` or JavaScript entrypoint. Do not point either variable at a
+`.cmd`, `.bat`, PowerShell, or extensionless shell shim; those are rejected
+instead of being executed through a shell.
+
 ## Next steps
 
 - Developers: [developer guide](development.md)

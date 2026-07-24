@@ -19,6 +19,8 @@ All notable changes are documented here.
 - Add a manual, OIDC-based npm trusted-publishing workflow with provenance,
   exact tag/version verification, ordered publication, integrity-checked
   retries, least-privilege permissions, and documented bootstrap gates.
+- Resolve Codex and Claude npm shims to native package entrypoints on Windows,
+  preventing graph and wrapper executors from failing with `spawn EPERM`.
 
 ## 0.3.1 - 2026-07-24
 

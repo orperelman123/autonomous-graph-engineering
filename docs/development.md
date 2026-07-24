@@ -152,6 +152,15 @@ never contact OpenAI or Anthropic. Development rules:
 See the complete [benchmark protocol](benchmark.md). A developer test is not
 authorization to spend provider budget.
 
+## Agent process portability
+
+All agent subprocesses run with `shell: false`. On Windows, use
+`resolveAgentCommand` from the prompt-refiner package so npm's extensionless,
+`.cmd`, and PowerShell shims cannot be selected accidentally. Resolution must
+prefer the package's JavaScript or native executable entrypoint, preserve
+argument boundaries, and fail closed when only a shell shim is available.
+Cover new CLI layouts with platform-independent fixture tests.
+
 ## Security and privacy review
 
 Before committing, inspect both tracked and untracked changes:
