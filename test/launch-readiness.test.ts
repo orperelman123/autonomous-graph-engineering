@@ -35,11 +35,20 @@ test("release version is synchronized across packages, plugins, and servers", as
   for (const path of [
     "packages/prompt-refiner/src/mcp-server.ts",
     "packages/graph-orchestrator/src/mcp-server.ts",
-    "plugins/prompt-refiner/.cursor-plugin/plugin.json",
-    ".github/plugin/marketplace.json",
   ]) {
-    assert.match(await readFile(path, "utf8"), /0\.3\.0/);
+    assert.match(
+      await readFile(path, "utf8"),
+      /serverInfo:\s*\{\s*name:\s*"[^"]+",\s*version:\s*"0\.3\.0"\s*\}/,
+    );
   }
+  const marketplace = JSON.parse(
+    await readFile(".github/plugin/marketplace.json", "utf8"),
+  ) as {
+    metadata: { version: string };
+    plugins: Array<{ version: string }>;
+  };
+  assert.equal(marketplace.metadata.version, "0.3.0");
+  assert.equal(marketplace.plugins[0]?.version, "0.3.0");
 });
 
 test("doctor returns a machine-readable readiness report", async () => {

@@ -183,13 +183,33 @@ export class SecurityGatedExecutor implements GraphExecutor {
   async execute(
     request: AgentExecutionRequest,
   ): Promise<AgentExecutionResult> {
+    const startedAt = Date.now();
     let decision: SecurityAuthorizationDecision;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let abort: (() => void) | undefined;
     try {
-      decision = await this.provider.authorize(
+      const authorization = this.provider.authorize(
         authorizationRequest(this.delegate, request),
       );
+      const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("authorization timed out")),
+          request.timeoutMs,
+        );
+        if (request.signal) {
+          abort = () => reject(new Error("authorization aborted"));
+          if (request.signal.aborted) abort();
+          else request.signal.addEventListener("abort", abort, { once: true });
+        }
+      });
+      decision = await Promise.race([authorization, deadline]);
     } catch {
       throw new Error("external security provider unavailable; execution denied");
+    } finally {
+      if (timer) clearTimeout(timer);
+      if (abort && request.signal) {
+        request.signal.removeEventListener("abort", abort);
+      }
     }
     if (
       decision?.decision !== "allow" &&
@@ -203,7 +223,14 @@ export class SecurityGatedExecutor implements GraphExecutor {
         `external security provider ${decision.decision === "hold" ? "held" : "blocked"} execution`,
       );
     }
-    return await this.delegate.execute(request);
+    const remainingTimeoutMs = request.timeoutMs - (Date.now() - startedAt);
+    if (remainingTimeoutMs <= 0) {
+      throw new Error("external security provider unavailable; execution denied");
+    }
+    return await this.delegate.execute({
+      ...request,
+      timeoutMs: remainingTimeoutMs,
+    });
   }
 }
 

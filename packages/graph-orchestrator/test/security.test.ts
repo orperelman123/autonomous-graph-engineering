@@ -97,6 +97,24 @@ test("security gate fails closed without exposing provider errors", async () => 
   assert.equal(delegate.calls, 0);
 });
 
+test("security gate bounds a non-settling provider by the execution deadline", async () => {
+  const delegate = new Delegate();
+  const gated = new SecurityGatedExecutor(delegate, {
+    async authorize() {
+      return await new Promise(() => undefined);
+    },
+  });
+  const boundedRequest = request();
+  boundedRequest.timeoutMs = 25;
+  const startedAt = Date.now();
+  await assert.rejects(
+    gated.execute(boundedRequest),
+    /external security provider unavailable; execution denied/,
+  );
+  assert.ok(Date.now() - startedAt < 1_000);
+  assert.equal(delegate.calls, 0);
+});
+
 test("security gate rejects malformed provider decisions", async () => {
   const delegate = new Delegate();
   const provider = {

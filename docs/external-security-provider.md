@@ -60,7 +60,7 @@ MIT-licensed project.
 Enable it explicitly:
 
 ```bash
-GRAPH_ENGINEER_SECURITY_PROVIDER=atbash
+export GRAPH_ENGINEER_SECURITY_PROVIDER=atbash
 ```
 
 For the transactionally installed local bundle, install the SDK without
@@ -86,8 +86,8 @@ Configure the official SDK through its supported environment or user config.
 At minimum, provide the locally held agent key and onboarded organization:
 
 ```bash
-ATBASH_AGENT_KEY=<secret-manager-reference-or-process-secret>
-ATBASH_ORG_NAME=<onboarded-organization>
+export ATBASH_AGENT_KEY="replace-with-process-secret"
+export ATBASH_ORG_NAME="onboarded-organization"
 ```
 
 Optional official SDK settings include `ATBASH_ENDPOINT`,
