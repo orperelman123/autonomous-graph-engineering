@@ -861,7 +861,9 @@ test("runs independent ready DAG nodes concurrently within maxParallel", async (
   });
   verify.dependsOn = ["execute", "execute_peer"];
   graph.budgets.maxParallel = 2;
-  graph.budgets.timeoutMs = 1_000;
+  // This test verifies the concurrency barrier, not deadline enforcement. Leave
+  // enough graph time for checkpoint I/O on contended Windows CI runners.
+  graph.budgets.timeoutMs = 10_000;
   const directory = await mkdtemp(join(tmpdir(), "graph-dag-concurrency-"));
   try {
     const result = await runGraph(graph, {
@@ -955,7 +957,9 @@ test("enforces maxParallel globally across concurrent map nodes", async () => {
   ];
   delete graph.repairPolicy;
   graph.budgets.maxParallel = 2;
-  graph.budgets.timeoutMs = 1_000;
+  // This test verifies the global semaphore, not deadline enforcement. Leave
+  // enough graph time for checkpoint I/O on contended Windows CI runners.
+  graph.budgets.timeoutMs = 10_000;
   const directory = await mkdtemp(join(tmpdir(), "graph-global-concurrency-"));
   try {
     const result = await runGraph(graph, {
@@ -1342,4 +1346,3 @@ test("rejects operator-verified output that violates the node schema", async () 
     await rm(directory, { recursive: true, force: true });
   }
 });
-
