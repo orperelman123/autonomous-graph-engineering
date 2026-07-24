@@ -11,6 +11,8 @@ export type {
 } from "./doctor.js";
 export { runGraphEvaluation } from "./evaluation.js";
 export { gradeCheckpoint } from "./grader.js";
+export { createPortableRunReport } from "./report.js";
+export type { PortableRunReport } from "./report.js";
 export { planGraph } from "./planner.js";
 export {
   CheckpointStore,

@@ -20,7 +20,7 @@ Autonomous Graph Engineering is early and intentionally safety-first. This roadm
 - [x] Publish an offline Codex/Claude provider-envelope compatibility benchmark
 - [ ] Publish a provider-backed outcome benchmark with repeated trials and blinded grading
 - [ ] Add real-world example packs for repository audit, implementation, migration, and release preparation
-- [ ] Export a portable run report with graph, budgets, verifier result, usage, and redacted evidence
+- [x] Export a portable run report with graph, budgets, verifier result, usage, and redacted evidence
 - [ ] Test a compatibility matrix across Codex, Claude Code, Cursor, and GitHub Copilot versions
 
 ## Later: grow the ecosystem safely

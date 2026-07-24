@@ -29,6 +29,7 @@ graph-engineer run [options] <prompt>
 graph-engineer run-file [--approve <token>] <graph.json>
 graph-engineer resume [--approve <token>] <run-id>
 graph-engineer inspect <run-id>
+graph-engineer report <run-id>
 graph-engineer reconcile <run-id> <node-id> --token <token> \
   --outcome completed|not_applied --evidence <text> [--output-json <json>] \
   [--termination-json <json>]
@@ -39,6 +40,13 @@ graph-engineer serve [port]
 ```
 
 Autonomy levels are `plan_only`, `read_only`, `workspace`, and `consequential`.
+
+`graph-engineer report` exports a portable structural report from an existing
+checkpoint and audit log. It includes the graph topology and budgets, node
+states, usage, verifier acceptance, ordered lifecycle evidence, and SHA-256
+artifact digests. Free-text goals, prompts, labels, outputs, verifier reasons,
+errors, audit payloads, and local paths are omitted by design. The output
+satisfies [`portable-run-report.schema.json`](../schemas/portable-run-report.schema.json).
 
 Side-effecting executor requests carry a stable `idempotencyKey` for the logical
 node and a unique `attemptId` for the concrete invocation. A timeout is an
@@ -116,6 +124,7 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 - [`prompt-refinement.schema.json`](../schemas/prompt-refinement.schema.json)
 - [`autonomous-graph.schema.json`](../schemas/autonomous-graph.schema.json)
 - [`doctor-report.schema.json`](../schemas/doctor-report.schema.json)
+- [`portable-run-report.schema.json`](../schemas/portable-run-report.schema.json)
 - [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
 - [`provider-benchmark-report.schema.json`](../schemas/provider-benchmark-report.schema.json)
 - [`live-provider-benchmark-plan.schema.json`](../schemas/live-provider-benchmark-plan.schema.json)

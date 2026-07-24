@@ -8,6 +8,9 @@ import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { planGraph } from "../packages/graph-orchestrator/src/planner.js";
+import { createPortableRunReport } from "../packages/graph-orchestrator/src/report.js";
+import { graphFingerprint } from "../packages/graph-orchestrator/src/runtime.js";
+import type { GraphRunCheckpoint } from "../packages/graph-orchestrator/src/types.js";
 import { validateGraph } from "../packages/graph-orchestrator/src/validator.js";
 import { compilePrompt } from "../packages/prompt-refiner/src/compiler.js";
 import { runLiveBenchmark } from "../scripts/live-provider-benchmark-lib.mjs";
@@ -95,6 +98,67 @@ test("doctor output satisfies its strict public report schema", async () => {
     { cwd: process.cwd() },
   );
   const report = JSON.parse(stdout);
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+});
+
+test("portable run report satisfies its strict public schema", async () => {
+  const validate = await validator("portable-run-report.schema.json");
+  const directory = await mkdtemp(join(tmpdir(), "age-portable-schema-"));
+  const runId = "schema-portable-run";
+  const graph = planGraph({
+    prompt: "Produce a schema-safe local report.",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  const now = new Date(0).toISOString();
+  const verifierNodeId = graph.repairPolicy?.verifierNodeId ?? "verify";
+  const checkpoint: GraphRunCheckpoint = {
+    version: "1.0",
+    graph,
+    graphHash: graphFingerprint(graph),
+    runId,
+    status: "completed",
+    outputs: { [verifierNodeId]: { accepted: true, reasons: [] } },
+    nodes: Object.fromEntries(
+      graph.nodes.map((node) => [
+        node.id,
+        {
+          nodeId: node.id,
+          state: "completed",
+          startedAt: now,
+          completedAt: now,
+        },
+      ]),
+    ),
+    repairRounds: 0,
+    usage: {},
+    startedAt: now,
+    updatedAt: now,
+    eventSequence: 2,
+  };
+  await writeFile(
+    join(directory, `${runId}.checkpoint.json`),
+    JSON.stringify(checkpoint),
+  );
+  await writeFile(
+    join(directory, `${runId}.jsonl`),
+    `${JSON.stringify({
+      sequence: 1,
+      runId,
+      timestamp: now,
+      type: "run_started",
+    })}\n${JSON.stringify({
+      sequence: 2,
+      runId,
+      timestamp: now,
+      type: "run_completed",
+    })}\n`,
+  );
+  const report = await createPortableRunReport(directory, runId);
   assert.equal(
     validate(report),
     true,

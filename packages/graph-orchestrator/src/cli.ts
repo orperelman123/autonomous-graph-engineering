@@ -4,6 +4,7 @@ import { renderDoctorReport, runDoctor } from "./doctor.js";
 import { runGraphEvaluation } from "./evaluation.js";
 import { gradeCheckpoint } from "./grader.js";
 import { loadCheckpoint } from "./persistence.js";
+import { createPortableRunReport } from "./report.js";
 import {
   reconcileCheckpoint,
   reconciliationNeeds,
@@ -32,6 +33,7 @@ function usage(): never {
   graph-engineer run-file [--approve graph-id:fingerprint:gate-id] <graph.json>
   graph-engineer resume [--approve graph-id:fingerprint:gate-id] <run-id>
   graph-engineer inspect <run-id>
+  graph-engineer report <run-id>
   graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>] [--termination-json <json>]
   graph-engineer grade <run-id>
   graph-engineer semantic-grade <run-id> <corpus.json> <case-id>
@@ -147,6 +149,13 @@ async function main(): Promise<void> {
         2,
       )}\n`,
     );
+    return;
+  }
+  if (command === "report") {
+    if (!args[0]) usage();
+    const directory = process.env.GRAPH_ENGINEER_AUDIT_DIRECTORY ?? ".graph-runs";
+    const report = await createPortableRunReport(directory, args[0]);
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }
   if (command === "reconcile") {
