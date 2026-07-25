@@ -266,6 +266,30 @@ In a new chat, `/improve-prompt` and `/engineer-graph` load the same bounded
 skills used by the other hosts. Call `get_runtime_info` through both MCP
 servers and require `status: "current"` before graph execution.
 
+### Always review prompts in Hermes
+
+Hermes automatically loads one project context type in priority order:
+`.hermes.md`, `AGENTS.md`, `CLAUDE.md`, then `.cursorrules`. This repository's
+root `AGENTS.md` already tells compatible hosts to refine intent before
+substantive work. For another Hermes workspace, add the following to its active
+`.hermes.md` or `AGENTS.md`:
+
+```markdown
+## Prompt refinement
+
+Always review my prompt before substantive work. Preserve the original request,
+constraints, and permissions. Use GraphVigil's `refine_prompt` MCP tool when it
+is available, then execute from the resulting compact brief. Ask one
+clarification only when different answers materially change the result. Never
+expand permissions or infer credentials, destructive actions, publication, or
+external side effects. Treat a prompt beginning with `!raw` as an explicit
+one-turn bypass.
+```
+
+Start Hermes from that workspace so the context file is loaded. If both
+`.hermes.md` and `AGENTS.md` exist, put the instruction in `.hermes.md` because
+Hermes loads only the first supported project context type.
+
 Hermes treats configured external skill directories as agent-manageable when
 the process has filesystem write access. They are not a write-protection
 boundary. The generated fragment therefore sets `skills.write_approval: true`;
@@ -278,7 +302,8 @@ marketplace submission. Those are separate publication actions.
 
 References: [Hermes MCP](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp),
 [MCP configuration](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference),
-and [external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills#external-skill-directories).
+[external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills#external-skill-directories),
+and [context files](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files).
 
 ## Verify the installation
 
