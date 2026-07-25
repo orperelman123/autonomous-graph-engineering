@@ -4,6 +4,9 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add a transactional Hermes Agent host adapter that emits a credential-free
+  config fragment for both MCP servers and the shared GraphVigil skills, with
+  Hermes skill-write approval enabled.
 - Add a schema-validated `graph-engineer report` export with graph topology,
   budgets, verifier acceptance, usage, artifact digests, and structurally
   redacted lifecycle evidence.

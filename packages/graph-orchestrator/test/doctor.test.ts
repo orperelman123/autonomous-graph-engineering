@@ -16,7 +16,14 @@ function fixture(overrides: {
   pathsExist?: boolean;
 } = {}) {
   const commands = new Set(
-    overrides.commands ?? ["npm", "codex", "claude", "cursor-agent", "copilot"],
+    overrides.commands ?? [
+      "npm",
+      "codex",
+      "claude",
+      "cursor-agent",
+      "copilot",
+      "hermes",
+    ],
   );
   const pluginValid = overrides.pluginValid ?? true;
   const pathsExist = overrides.pathsExist ?? true;
@@ -55,7 +62,7 @@ test("doctor fixture is deterministic and ready without provider credentials", a
   assert.deepEqual(first, second);
   assert.equal(first.status, "ready");
   assert.equal(first.summary.failures, 0);
-  assert.equal(first.summary.warnings, 4);
+  assert.equal(first.summary.warnings, 5);
   assert.deepEqual(
     first.checks.map((check) => check.id),
     [
@@ -68,6 +75,7 @@ test("doctor fixture is deterministic and ready without provider credentials", a
       "claude-cli",
       "cursor-cli",
       "copilot-cli",
+      "hermes-cli",
     ],
   );
   assert.deepEqual(
@@ -81,6 +89,7 @@ test("doctor fixture is deterministic and ready without provider credentials", a
       { host: "claude", authentication: "unknown", mcpRegistration: "unknown" },
       { host: "cursor", authentication: "unknown", mcpRegistration: "unknown" },
       { host: "copilot", authentication: "unknown", mcpRegistration: "unknown" },
+      { host: "hermes", authentication: "unknown", mcpRegistration: "unknown" },
     ],
   );
 });
@@ -169,5 +178,6 @@ test("doctor probes each CLI once without spawning shell discovery commands", as
     claude: 1,
     "cursor-agent": 1,
     copilot: 1,
+    hermes: 1,
   });
 });

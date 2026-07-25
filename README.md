@@ -19,7 +19,7 @@ stable for compatibility.
 [![GitHub stars](https://img.shields.io/github/stars/orperelman123/autonomous-graph-engineering?style=social)](https://github.com/orperelman123/autonomous-graph-engineering/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An open-source TypeScript runtime and plugin for Codex, Claude Code, Cursor, and GitHub Copilot. It preserves the user's original request, decomposes broad work into a validated DAG, runs isolated workers, cross-checks results, caps repair, and stops for human approval before consequential actions.
+An open-source TypeScript runtime and plugin for Codex, Claude Code, Cursor, GitHub Copilot, and Hermes Agent. It preserves the user's original request, decomposes broad work into a validated DAG, runs isolated workers, cross-checks results, caps repair, and stops for human approval before consequential actions.
 
 ## The problem it solves
 
@@ -75,6 +75,8 @@ It verifies how direct execution, a bounded repair loop, and a validated graph b
 - Codex and Claude Code executors with isolated child context
 - Native Cursor plugin metadata and always-on refinement rule
 - Native GitHub Copilot CLI plugin with deterministic prompt transformation
+- Hermes Agent MCP and external-skill-directory configuration generated from
+  the same transactionally verified local bundle
 - Global concurrency, fan-out, timeout, output, token, and repair budgets
 - Output-schema enforcement and independent verification
 - Append-only JSONL audit events
@@ -143,20 +145,26 @@ Install the CLIs and local plugin bundle:
 npm run install:local
 ```
 
-Then follow the [four-host installation guide](docs/installation.md).
+Then follow the [five-host installation guide](docs/installation.md).
 
-Prepare a native local bundle for Cursor or GitHub Copilot CLI:
+Prepare a native local bundle for Cursor, GitHub Copilot CLI, or Hermes Agent:
 
 ```bash
 npm run install:cursor
 npm run install:copilot
+npm run install:hermes
 ```
+
+Hermes can use the same official external Atbash authorization boundary with
+`npm run install:hermes -- --with-atbash --enable-atbash`; the generated config
+contains no credentials and fails closed when private provider configuration is
+missing or invalid.
 
 Cursor uses an always-on rule because its current pre-submit hook can allow or
 block a request but cannot replace it. GitHub Copilot CLI uses the
 `userPromptTransformed` hook and therefore receives the deterministic improved
-brief automatically. The same shared skills and MCP servers are packaged for
-both hosts.
+brief automatically. Hermes consumes the same MCP servers and skills through
+its generated config fragment.
 
 For Claude Code, the repository is also a plugin marketplace:
 
@@ -201,7 +209,7 @@ Maintainers should also follow the evidence-gated [Release process](docs/releasi
 packages/
   prompt-refiner/       Intent-preserving compiler, MCP, HTTP, and CLI
   graph-orchestrator/   Planner, validator, runtime, executors, checkpoints
-plugins/prompt-refiner/ Portable Codex, Claude, Cursor, and Copilot plugin sources
+plugins/prompt-refiner/ Portable Codex, Claude, Cursor, Copilot, and Hermes skill sources
 schemas/                Public JSON contracts
 config/                 Safe example configuration and semantic corpus
 docs/                   Architecture, security, interfaces, and evaluation
@@ -223,7 +231,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 131 unit, interface, integration, launch-readiness,
+The current suite contains 134 unit, interface, integration, launch-readiness,
 and schema-contract tests, 21 adversarial graph evaluations, 30
 prompt-refinement evaluations, and a two-case repository semantic corpus. The
 checks are deterministic by default and do not require provider credentials.

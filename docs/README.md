@@ -3,7 +3,7 @@
 | Guide | Audience and purpose |
 | --- | --- |
 | [Getting started](getting-started.md) | Evaluate GraphVigil, choose direct/loop/graph, install a host plugin, and inspect evidence |
-| [Installation](installation.md) | Install and verify Codex, Claude Code, Cursor, and Copilot integrations |
+| [Installation](installation.md) | Install and verify Codex, Claude Code, Cursor, Copilot, and Hermes integrations |
 | [Developer guide](development.md) | Set up the repository, navigate the code, test changes, and prepare releases |
 | [Architecture](architecture.md) | Understand components, data flow, persistence, gates, and repair |
 | [Interfaces](interfaces.md) | Use CLI, MCP, HTTP, and public JSON contracts |

@@ -36,7 +36,7 @@ credential-free. Never add a real API key to a repository file.
 | Executor boundary | `packages/graph-orchestrator/src/executors.ts`, `security.ts`, `output-schema.ts` | Launch bounded agents, authorize delegation, normalize output and usage |
 | Verification | `packages/graph-orchestrator/src/grader.ts`, `semantic-grader.ts`, `evaluation.ts` | Acceptance, repository evidence, semantic cases, and adversarial evals |
 | Public contracts | `schemas/`, `docs/interfaces.md` | Stable machine-readable inputs and reports |
-| Host packages | `plugins/prompt-refiner/` | Codex, Claude Code, Cursor, and GitHub Copilot integration sources |
+| Host packages | `plugins/prompt-refiner/` | Shared skills plus Codex, Claude Code, Cursor, GitHub Copilot, and generated Hermes integration sources |
 | Repository tools | `scripts/` | Install, verify, doctor, benchmark, scan, and release checks |
 
 Generated `dist/` directories are build output. Edit TypeScript sources and
@@ -112,7 +112,8 @@ failure mode.
 ### Host plugin changes
 
 Shared source lives under `plugins/prompt-refiner/`. Keep Codex, Claude Code,
-Cursor, and Copilot manifests version-synchronized. Run:
+Cursor, and Copilot manifests version-synchronized, and keep the generated
+Hermes config contract aligned with those skills and MCP entrypoints. Run:
 
 ```bash
 npm run install:local
@@ -195,6 +196,7 @@ The release version must match:
 - `package-lock.json`;
 - MCP server metadata;
 - Codex, Claude, Cursor, and Copilot plugin or marketplace manifests;
+- the generated Hermes MCP and external-skill-directory config contract;
 - launch-readiness assertions;
 - the changelog.
 

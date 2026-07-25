@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
+import {
+  createHermesConfiguration,
+  renderHermesConfiguration,
+} from "../scripts/hermes-config-lib.mjs";
 
 async function json(path: string): Promise<Record<string, unknown>> {
   return JSON.parse(await readFile(resolve(path), "utf8")) as Record<string, unknown>;
@@ -124,5 +128,61 @@ test("Copilot hook fails closed when its installed runtime is unavailable", asyn
   assert.match(
     String(result.modifiedTransformedPrompt),
     /failed closed.*Do not act/is,
+  );
+});
+
+test("Hermes config uses official MCP and external skill directory keys", () => {
+  const configuration = createHermesConfiguration({
+    pluginTarget: resolve("fixture", "hermes", "prompt-refiner"),
+    runtimeIdentity: {
+      GRAPHVIGIL_INSTALL_ID: "fixture-install-id",
+      GRAPHVIGIL_INSTALL_MANIFEST: resolve(
+        "fixture",
+        "hermes",
+        "prompt-refiner",
+        "install-manifest.json",
+      ),
+    },
+  });
+  assert.deepEqual(Object.keys(configuration.mcp_servers), [
+    "prompt-refiner",
+    "graph-engineer",
+  ]);
+  assert.equal(configuration.skills.external_dirs.length, 1);
+  assert.equal(configuration.skills.write_approval, true);
+  assert.equal(
+    configuration.mcp_servers["prompt-refiner"].env
+      .PROMPT_REFINER_PROVIDER,
+    "none",
+  );
+  assert.equal(
+    "GRAPH_ENGINEER_SECURITY_PROVIDER" in
+      configuration.mcp_servers["graph-engineer"].env,
+    false,
+  );
+  const rendered = renderHermesConfiguration(configuration);
+  assert.match(rendered, /^skills:/);
+  assert.match(rendered, /\nmcp_servers:/);
+  assert.doesNotMatch(rendered, /undefined|null/);
+});
+
+test("Hermes config quotes hostile path text instead of creating YAML keys", () => {
+  const configuration = createHermesConfiguration({
+    pluginTarget: "C:\\safe\nmcp_servers:\n  injected",
+    runtimeIdentity: {
+      GRAPHVIGIL_INSTALL_ID: "fixture-install-id",
+      GRAPHVIGIL_INSTALL_MANIFEST: "C:\\safe\ninjected: true",
+    },
+    enableAtbash: true,
+  });
+  const rendered = renderHermesConfiguration(configuration);
+  assert.equal(
+    rendered.split("\n").filter((line) => line === "mcp_servers:").length,
+    1,
+  );
+  assert.doesNotMatch(rendered, /^  injected:/m);
+  assert.match(
+    rendered,
+    /GRAPH_ENGINEER_SECURITY_PROVIDER: "atbash"/,
   );
 });

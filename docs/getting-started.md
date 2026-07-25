@@ -102,11 +102,12 @@ Build the native source bundle for another supported host:
 ```bash
 npm run install:cursor
 npm run install:copilot
+npm run install:hermes
 ```
 
-Cursor and Copilot CLI must already be installed to run their host-specific
-verification. See the [installation guide](installation.md) for registration
-and host behavior.
+Cursor, Copilot CLI, and Hermes Agent must already be installed to complete
+their host-specific registration and verification. See the
+[installation guide](installation.md) for registration and host behavior.
 
 ## 6. Add native Atbash authorization
 
