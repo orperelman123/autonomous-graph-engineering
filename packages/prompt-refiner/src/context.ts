@@ -1,5 +1,6 @@
 import { basename, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
+import { markPromptContextSource } from "./context-policy.js";
 import type { PromptContext } from "./types.js";
 
 async function readJson(path: string): Promise<Record<string, unknown> | undefined> {
@@ -10,8 +11,9 @@ async function readJson(path: string): Promise<Record<string, unknown> | undefin
   }
 }
 
-export async function collectContext(cwd = process.cwd()): Promise<PromptContext> {
-  const absolute = resolve(cwd);
+export async function collectContext(cwd?: string): Promise<PromptContext> {
+  const source = cwd === undefined ? "process_cwd" : "explicit_cwd";
+  const absolute = resolve(cwd ?? process.cwd());
   const packageJson = await readJson(resolve(absolute, "package.json"));
   const dependencies = {
     ...((packageJson?.dependencies as Record<string, unknown> | undefined) ?? {}),
@@ -29,12 +31,15 @@ export async function collectContext(cwd = process.cwd()): Promise<PromptContext
     "svelte",
   ];
   const frameworks = frameworkCandidates.filter((name) => name in dependencies);
-  return {
-    cwd: absolute,
-    projectName:
-      typeof packageJson?.name === "string"
-        ? packageJson.name
-        : basename(absolute),
-    frameworks,
-  };
+  return markPromptContextSource(
+    {
+      cwd: absolute,
+      projectName:
+        typeof packageJson?.name === "string"
+          ? packageJson.name
+          : basename(absolute),
+      frameworks,
+    },
+    source,
+  );
 }

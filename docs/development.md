@@ -30,14 +30,18 @@ credential-free. Never add a real API key to a repository file.
 | Area | Primary files | Responsibility |
 | --- | --- | --- |
 | Prompt compilation | `packages/prompt-refiner/src/compiler.ts`, `security.ts`, `provider.ts` | Preserve intent, classify risk, constrain optional semantic refinement |
+| Prompt context policy | `packages/prompt-refiner/src/context.ts`, `context-policy.ts` | Collect, attribute, normalize, deduplicate, and bound prompt context |
 | Prompt interfaces | `packages/prompt-refiner/src/cli.ts`, `hook.ts`, `mcp-server.ts`, `server.ts` | CLI, host hooks, MCP, and HTTP adapters |
 | Graph planning | `packages/graph-orchestrator/src/planner.ts`, `validator.ts`, `types.ts` | Route work, compile DAGs, reject invalid topology or permissions |
 | Runtime | `packages/graph-orchestrator/src/runtime.ts`, `persistence.ts`, `reconciliation.ts` | Schedule nodes, enforce budgets, checkpoint, resume, and reconcile |
 | Executor boundary | `packages/graph-orchestrator/src/executors.ts`, `security.ts`, `output-schema.ts` | Launch bounded agents, authorize delegation, normalize output and usage |
+| Extension boundary | `packages/graph-orchestrator/src/extensions.ts`, `grader.ts` | Register trusted permission-capped executors and bounded graders |
+| Local dashboard | `packages/graph-orchestrator/src/dashboard.ts`, `report.ts` | Produce loopback-only redacted run summaries from persisted evidence |
 | Verification | `packages/graph-orchestrator/src/grader.ts`, `semantic-grader.ts`, `evaluation.ts` | Acceptance, repository evidence, semantic cases, and adversarial evals |
 | Public contracts | `schemas/`, `docs/interfaces.md` | Stable machine-readable inputs and reports |
 | Host packages | `plugins/prompt-refiner/` | Shared skills plus Codex, Claude Code, Cursor, GitHub Copilot, and generated Hermes integration sources |
 | Repository tools | `scripts/` | Install, verify, doctor, benchmark, scan, and release checks |
+| Community templates | `templates/`, `scripts/community-template-lib.mjs`, `scripts/verify-community-templates.mjs` | Bind read-only graphs to provenance and verify them offline |
 
 Generated `dist/` directories are build output. Edit TypeScript sources and
 rebuild; do not make source changes only in generated files.
@@ -55,6 +59,9 @@ rebuild; do not make source changes only in generated files.
 | `npm run demo` | Generate and validate a credential-free example | None |
 | `npm run benchmark` | Run the deterministic control-plane benchmark | None |
 | `npm run benchmark:providers:offline` | Test pinned provider envelope parsing | None |
+| `npm run compatibility` | Validate the five-host repository contract matrix | None |
+| `node scripts/verify-community-templates.mjs` | Verify template schemas, provenance, and runtime policy | None |
+| `graph-engineer dashboard 4319` | Inspect bounded redacted run summaries on loopback | None |
 | `npm run secret-scan` | Reject likely secrets and private paths | None |
 | `npm run link-check` | Validate local Markdown links | None |
 
@@ -125,6 +132,11 @@ Installation is transactional and must restore the previous bundle if
 post-activation verification fails. Every managed install must also generate a
 new installation identity, propagate it to both MCP configurations, and make a
 stale process report `reload_required` without exposing local paths.
+Cleanup occurs only after verification commits the candidate. Windows lock
+errors may retain an exact-name previous-installation backup without failing
+the verified activation; a later installer run removes it after every stale
+host reloads. Tests must prove rollback failures remain fatal, locked cleanup
+is non-fatal, and lookalike directories are never removed.
 
 ### Public contracts
 
@@ -138,6 +150,16 @@ strict mode. When changing a report:
 
 Runtime validation remains authoritative; schemas are an interoperable first
 line, not a replacement for runtime policy.
+
+Community template wrappers add provenance, licensing, maintainer, and
+compatibility claims around an ordinary graph without changing graph runtime
+semantics. Keep the wrapper schema, report schema, verifier, fixtures, and
+[template guide](community-graph-templates.md) synchronized.
+
+The optional [local dashboard](local-dashboard.md) composes the portable run
+report producer into a separate, strict, read-only summary contract. Keep its
+routes fixed, loopback-only, bounded, and free of mutation or authorization
+controls.
 
 ## Live provider benchmark development
 

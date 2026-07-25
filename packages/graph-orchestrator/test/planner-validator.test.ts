@@ -164,7 +164,7 @@ test("rejects unsupported node fields and malformed repair policies", () => {
     repairPolicy: Record<string, unknown>;
   };
   graph.nodes[0]!.routes = { accepted: ["verify"] };
-  graph.repairPolicy.repairExecutor = "unbounded-shell";
+  graph.repairPolicy.repairExecutor = "constructor";
 
   const result = validateGraph(graph as never);
   assert.equal(result.valid, false);

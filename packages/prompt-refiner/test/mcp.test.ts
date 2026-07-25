@@ -50,6 +50,35 @@ test("MCP server initializes and exposes refinement tools", async () => {
   child.stdin.write(
     `${JSON.stringify({
       jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        name: "refine_prompt",
+        arguments: {
+          prompt: "Investigate the root cause of the parser bug.",
+          semantic: false,
+        },
+      },
+    })}\n`,
+  );
+  child.stdin.write(
+    `${JSON.stringify({
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: {
+        name: "refine_prompt",
+        arguments: {
+          prompt: "Review the parser.",
+          semantic: false,
+          cwd: resolve(testDir, ".."),
+        },
+      },
+    })}\n`,
+  );
+  child.stdin.write(
+    `${JSON.stringify({
+      jsonrpc: "2.0",
       id: 2,
       method: "tools/list",
       params: {},
@@ -61,7 +90,7 @@ test("MCP server initializes and exposes refinement tools", async () => {
       reject(new Error("MCP server response timed out"));
     }, 5000);
     const poll = setInterval(() => {
-      if (lines.length >= 2) {
+      if (lines.length >= 4) {
         clearInterval(poll);
         clearTimeout(timeout);
         resolvePromise();
@@ -72,7 +101,15 @@ test("MCP server initializes and exposes refinement tools", async () => {
   await stopChild(child);
   const responses = lines.map((line) => JSON.parse(line)) as Array<{
     id: number;
-    result?: { tools?: Array<{ name: string }> };
+    result?: {
+      tools?: Array<{ name: string }>;
+      structuredContent?: {
+        brief?: {
+          context?: string[];
+          permissionsRequired?: string[];
+        };
+      };
+    };
   }>;
   assert.equal(responses[0]?.id, 1);
   assert.equal(responses[1]?.id, 2);
@@ -82,6 +119,22 @@ test("MCP server initializes and exposes refinement tools", async () => {
       "refine_prompt",
       "get_runtime_info",
       "evaluate_prompt_refiner",
+    ],
+  );
+  assert.deepEqual(
+    responses[2]?.result?.structuredContent?.brief?.permissionsRequired,
+    [],
+  );
+  assert.deepEqual(
+    responses[2]?.result?.structuredContent?.brief?.context,
+    [],
+  );
+  assert.deepEqual(
+    responses[3]?.result?.structuredContent?.brief?.context,
+    [
+      "Context source: filesystem inspection of an explicit working directory",
+      "Project: @autonomous-graph-engineering/prompt-refiner",
+      `Working directory: ${resolve(testDir, "..")}`,
     ],
   );
 });

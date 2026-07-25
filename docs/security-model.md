@@ -22,6 +22,9 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 
 - The original prompt is retained and hashed.
 - Refinement cannot add permissions.
+- Prompt context is normalized through one versioned policy with explicit
+  provenance and UTF-8 byte bounds before any interface or semantic provider
+  consumes it.
 - Node permission must not exceed graph autonomy.
 - Human gates cannot elevate autonomy.
 
@@ -78,11 +81,27 @@ Trusted deterministic code includes the compiler, planner, validator, scheduler,
 - Request bodies are limited to 2 MB.
 - Responses disable caching.
 
+### Extensions, templates, and dashboard
+
+- Executor extensions declare a permission allowlist, but their implementation
+  is trusted in-process code and must be reviewed like any executable
+  dependency.
+- Extension graders receive cloned, frozen evidence and have bounded count,
+  output, identifiers, and execution time; they cannot replace runtime
+  validation or authorization.
+- Community templates are provenance-bound and limited to read-only graphs.
+  Template verification never grants execution authority.
+- The local dashboard is loopback-only, read-only, response-bounded, and
+  structurally redacted. It is not an approval or reconciliation surface.
+
 ## Threats not fully solved
 
 - A malicious local administrator can modify code, checkpoints, credentials, or audit files.
 - Bearer authentication does not provide TLS, rate limiting, identity federation, or authorization roles.
 - Workspace-write subprocesses can modify any file permitted by the underlying sandbox.
+- Trusted in-process extensions can perform actions outside the registry
+  contract; permission caps constrain runtime dispatch, not arbitrary
+  JavaScript inside the extension.
 - Model verification can be wrong or collusive; semantic correctness still requires domain-specific evaluation.
 - Provider CLI output contracts may change.
 - Termination evidence is an operator attestation, not cryptographic proof of

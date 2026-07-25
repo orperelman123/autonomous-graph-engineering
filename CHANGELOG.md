@@ -4,6 +4,25 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Keep a verified Windows plugin activation successful when a running host
+  locks the previous Atbash native module, retain the exact backup with clear
+  stale-runtime remediation, and clean unlocked backups on a later bounded
+  installer run without touching lookalike directories.
+- Refuse Atbash activation before installation when its required private
+  process configuration is absent, and distinguish provider/configuration
+  failures from explicit policy blocks without exposing provider diagnostics.
+- Add one bounded prompt-context policy across compiler, semantic, HTTP, MCP,
+  hook, CLI, runner, and wrapper paths, with explicit provenance, strict
+  fields, deduplication, and UTF-8 byte limits.
+- Add a trusted in-process extension registry for permission-capped executors
+  and bounded, namespaced artifact graders.
+- Add schema- and runtime-validated read-only community graph templates with
+  canonical provenance, SPDX licensing, conservative host claims, and an
+  offline verifier.
+- Add an optional loopback-only dashboard with fixed read routes and a strict
+  redacted snapshot contract for persisted run evidence.
+- Add a strict five-host compatibility matrix and deterministic offline report
+  that separates repository-contract evidence from live host-version claims.
 - Add a transactional Hermes Agent host adapter that emits a credential-free
   config fragment for both MCP servers and the shared GraphVigil skills, with
   Hermes skill-write approval enabled.

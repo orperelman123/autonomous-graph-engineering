@@ -29,6 +29,9 @@ export type NodeState =
   | "blocked"
   | "skipped";
 
+export type BuiltInExecutorName = "codex" | "claude" | "local";
+export type ExecutorName = BuiltInExecutorName | (string & {});
+
 export interface GraphBudgets {
   maxNodes: number;
   maxParallel: number;
@@ -45,7 +48,7 @@ export interface GraphNode {
   kind: GraphNodeKind;
   dependsOn: string[];
   permission: NodePermission;
-  executor?: "codex" | "claude" | "local";
+  executor?: ExecutorName;
   prompt?: string;
   operation?: "identity" | "collect" | "flatten" | "dedupe";
   inputPath?: string;
@@ -60,7 +63,7 @@ export interface RepairPolicy {
   candidateNodeId: string;
   verifierNodeId: string;
   acceptedField: string;
-  repairExecutor: "codex" | "claude" | "local";
+  repairExecutor: ExecutorName;
   repairPrompt: string;
 }
 
@@ -226,14 +229,14 @@ export interface ReconciliationRecord {
 export interface PlanGraphRequest {
   prompt: string;
   autonomy?: AutonomyLevel;
-  primaryExecutor?: "codex" | "claude" | "local";
-  verifierExecutor?: "codex" | "claude" | "local";
+  primaryExecutor?: ExecutorName;
+  verifierExecutor?: ExecutorName;
   forceGraph?: boolean;
 }
 
 export interface RunGraphOptions {
   cwd?: string;
-  executors: Partial<Record<"codex" | "claude" | "local", GraphExecutor>>;
+  executors: Partial<Record<string, GraphExecutor>>;
   approvals?: string[];
   auditDirectory?: string;
   now?: () => Date;

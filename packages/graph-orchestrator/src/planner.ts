@@ -5,8 +5,10 @@ import type {
   GraphBudgets,
   GraphNode,
   GraphSpec,
+  ExecutorName,
   PlanGraphRequest,
 } from "./types.js";
+import { isValidExecutorName } from "./extensions.js";
 
 const DEFAULT_BUDGETS: GraphBudgets = {
   maxNodes: 16,
@@ -54,8 +56,8 @@ function permissionFor(
 function directNodes(
   goal: string,
   permission: GraphNode["permission"],
-  primary: "codex" | "claude" | "local",
-  verifier: "codex" | "claude" | "local",
+  primary: ExecutorName,
+  verifier: ExecutorName,
 ): GraphNode[] {
   return [
     {
@@ -92,8 +94,8 @@ function directNodes(
 function graphNodes(
   goal: string,
   permission: GraphNode["permission"],
-  primary: "codex" | "claude" | "local",
-  verifier: "codex" | "claude" | "local",
+  primary: ExecutorName,
+  verifier: ExecutorName,
 ): GraphNode[] {
   const nodes: GraphNode[] = [
     {
@@ -206,6 +208,9 @@ export function planGraph(request: PlanGraphRequest): GraphSpec {
   const autonomy = request.autonomy ?? "read_only";
   const primary = request.primaryExecutor ?? "codex";
   const verifier = request.verifierExecutor ?? primary;
+  if (!isValidExecutorName(primary) || !isValidExecutorName(verifier)) {
+    throw new Error("executor name must be a safe lowercase identifier");
+  }
   const score = complexityScore(request.prompt);
   const permission = permissionFor(autonomy, refinement.classification);
   const consequential =
@@ -304,4 +309,3 @@ export function planGraph(request: PlanGraphRequest): GraphSpec {
     },
   };
 }
-

@@ -44,7 +44,10 @@
           "kind": { "enum": ["deterministic", "agent", "parallel_map", "reduce", "verifier", "human_gate"] },
           "dependsOn": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
           "permission": { "enum": ["none", "read", "write", "external", "destructive"] },
-          "executor": { "enum": ["codex", "claude", "local"] },
+          "executor": {
+            "type": "string",
+            "pattern": "^(?!(?:constructor|prototype)$)[a-z][a-z0-9-]{0,63}$"
+          },
           "prompt": { "type": "string" },
           "operation": { "enum": ["identity", "collect", "flatten", "dedupe"] },
           "inputPath": { "type": "string" },
@@ -64,7 +67,10 @@
         "candidateNodeId": { "type": "string" },
         "verifierNodeId": { "type": "string" },
         "acceptedField": { "type": "string" },
-        "repairExecutor": { "enum": ["codex", "claude", "local"] },
+        "repairExecutor": {
+          "type": "string",
+          "pattern": "^(?!(?:constructor|prototype)$)[a-z][a-z0-9-]{0,63}$"
+        },
         "repairPrompt": { "type": "string" }
       }
     },

@@ -65,6 +65,17 @@ The same benchmark guide documents an optional preregistered live-provider
 harness. It defaults to a credential-free dry run; live paid execution always
 requires `--execute` and an exact finite budget confirmation.
 
+Validate the five repository-owned host integration contracts without invoking
+a host or provider:
+
+```bash
+npm run compatibility
+```
+
+The report distinguishes deterministic contract evidence from separately
+recorded live host-version tests; see
+[Host compatibility](docs/compatibility.md).
+
 It verifies how direct execution, a bounded repair loop, and a validated graph behave when the same deterministic verifier rejects the first candidate. It does not claim to measure model intelligence, quality, cost, or speed.
 
 ## Features
@@ -87,6 +98,10 @@ It verifies how direct execution, a bounded repair loop, and a validated graph b
 - MCP, CLI, and authenticated loopback-first HTTP interfaces
 - Host-visible runtime identity and deterministic post-upgrade reload detection
 - Optional fail-closed external security provider with hashed inputs
+- Bounded, provenance-aware prompt context shared by every refinement interface
+- Trusted executor and grader extension registry with explicit permission caps
+- Provenance-bound, read-only community graph templates with offline verification
+- Optional loopback-only dashboard for redacted run summaries
 
 ## Graph engineering and loop engineering
 
@@ -200,7 +215,10 @@ Start with the [documentation index](docs/README.md) and
 [Architecture](docs/architecture.md), [Installation](docs/installation.md),
 [Security model](docs/security-model.md),
 [External security provider](docs/external-security-provider.md), and
-[Interfaces](docs/interfaces.md).
+[Interfaces](docs/interfaces.md). Optional surfaces are documented in
+[Executor and grader extensions](docs/extensions.md),
+[Community graph templates](docs/community-graph-templates.md), and the
+[Local dashboard](docs/local-dashboard.md).
 Maintainers should also follow the evidence-gated [Release process](docs/releasing.md).
 
 ## Repository layout
@@ -211,6 +229,8 @@ packages/
   graph-orchestrator/   Planner, validator, runtime, executors, checkpoints
 plugins/prompt-refiner/ Portable Codex, Claude, Cursor, Copilot, and Hermes skill sources
 schemas/                Public JSON contracts
+templates/              Provenance-bound community graph template wrappers
+compatibility/          Host contract evidence matrix
 config/                 Safe example configuration and semantic corpus
 docs/                   Architecture, security, interfaces, and evaluation
 scripts/                Installer and repository validation tools
@@ -231,8 +251,8 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 134 unit, interface, integration, launch-readiness,
-and schema-contract tests, 21 adversarial graph evaluations, 30
+The current suite contains 170 unit, interface, integration, launch-readiness,
+and schema-contract tests, 21 adversarial graph evaluations, 34
 prompt-refinement evaluations, and a two-case repository semantic corpus. The
 checks are deterministic by default and do not require provider credentials.
 See [Evaluation](docs/evaluation.md) and the

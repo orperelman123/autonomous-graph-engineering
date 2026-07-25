@@ -10,6 +10,21 @@ export type {
   DoctorReport,
 } from "./doctor.js";
 export { runGraphEvaluation } from "./evaluation.js";
+export {
+  GraphExtensionRegistry,
+  isValidExecutorName,
+  isValidExtensionName,
+  runExtensionGraders,
+} from "./extensions.js";
+export type {
+  ExecutorExtension,
+  ExtensionGradeCriterion,
+  ExtensionGradeResult,
+  GraphExtensionRegistryOptions,
+  GraphGrader,
+  GraphGraderContext,
+  RunExtensionGradersOptions,
+} from "./extensions.js";
 export { gradeCheckpoint } from "./grader.js";
 export { createPortableRunReport } from "./report.js";
 export type { PortableRunReport } from "./report.js";
@@ -56,6 +71,8 @@ export type {
   AgentExecutionRequest,
   AgentExecutionResult,
   AutonomyLevel,
+  BuiltInExecutorName,
+  ExecutorName,
   GraphBudgets,
   GraphEvaluationReport,
   GraphExecutor,

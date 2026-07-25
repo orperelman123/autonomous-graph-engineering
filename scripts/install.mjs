@@ -5,7 +5,10 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  assertAtbashActivationReady,
   atomicReplaceDirectory,
+  cleanupStaleInstallBackups,
+  renderRetainedBackupWarning,
   withInstallLock,
 } from "./install-lib.mjs";
 import {
@@ -25,6 +28,9 @@ const withAtbash = process.argv.includes("--with-atbash");
 const enableAtbash = process.argv.includes("--enable-atbash");
 if (enableAtbash && !withAtbash) {
   throw new Error("--enable-atbash requires --with-atbash");
+}
+if (enableAtbash) {
+  assertAtbashActivationReady();
 }
 if (!["codex-claude", "cursor", "copilot", "hermes"].includes(platform)) {
   throw new Error("platform must be codex-claude, cursor, copilot, or hermes");
@@ -60,9 +66,14 @@ function run(command, args, cwd = root) {
 }
 
 const temporary = `${pluginTarget}.installing-${process.pid}`;
+const retainedBackups = [];
 await mkdir(dirname(pluginTarget), { recursive: true });
 await withInstallLock(pluginTarget, async () => {
   try {
+    const staleCleanup = await cleanupStaleInstallBackups(pluginTarget);
+    retainedBackups.push(
+      ...staleCleanup.filter((result) => result.status === "retained"),
+    );
     run("npm", ["run", "build"]);
     if (!skipGlobal) {
       run("npm", ["install", "-g", "file:packages/prompt-refiner"]);
@@ -203,7 +214,7 @@ await withInstallLock(pluginTarget, async () => {
         "utf8",
       );
     }
-    await atomicReplaceDirectory({
+    const activation = await atomicReplaceDirectory({
       staged: temporary,
       target: pluginTarget,
       verify: async (installed) => {
@@ -230,6 +241,9 @@ await withInstallLock(pluginTarget, async () => {
         );
       },
     });
+    if (activation.backupCleanup?.status === "retained") {
+      retainedBackups.push(activation.backupCleanup);
+    }
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
@@ -242,3 +256,6 @@ process.stdout.write(
     : "") +
   "Reload each active host, then call get_runtime_info; status=current confirms the new installation is active.\n",
 );
+if (retainedBackups.length > 0) {
+  process.stderr.write(renderRetainedBackupWarning(retainedBackups.length));
+}

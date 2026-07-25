@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { access, open, rename, rm } from "node:fs/promises";
+import { access, open, readdir, rename, rm } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
+
+const RETAINABLE_BACKUP_ERRORS = new Set(["EBUSY", "ENOTEMPTY", "EPERM"]);
+const BACKUP_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function exists(path) {
   try {
@@ -8,6 +13,29 @@ async function exists(path) {
   } catch {
     return false;
   }
+}
+
+export function assertAtbashActivationReady(
+  environment = process.env,
+) {
+  const missing = ["ATBASH_AGENT_KEY", "ATBASH_ORG_NAME"].filter(
+    (name) => !environment[name]?.trim(),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `--enable-atbash requires non-empty ${missing.join(
+        " and ",
+      )} process environment variable${missing.length === 1 ? "" : "s"}; use --with-atbash without activation until onboarding is complete`,
+    );
+  }
+}
+
+export function renderRetainedBackupWarning(count) {
+  if (!Number.isInteger(count) || count < 1) return "";
+  return (
+    `GraphVigil retained ${count} verified previous-installation backup${count === 1 ? "" : "s"} because Windows reported locked files. ` +
+    "The active installation passed verification. A running host may still have the previous MCP runtime loaded; call get_runtime_info and reload every host until status=current, then rerun the installer to remove unlocked backups.\n"
+  );
 }
 
 export async function withInstallLock(target, operation) {
@@ -29,6 +57,54 @@ export async function withInstallLock(target, operation) {
     await handle.close();
     await rm(lockPath, { force: true });
   }
+}
+
+function retainableBackupError(error) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    RETAINABLE_BACKUP_ERRORS.has(error.code)
+  );
+}
+
+async function removeBackup(backup, removePath) {
+  try {
+    await removePath(backup, { recursive: true, force: true });
+    return { path: backup, status: "removed" };
+  } catch (error) {
+    if (!retainableBackupError(error)) throw error;
+    return {
+      path: backup,
+      status: "retained",
+      reason: error.code,
+    };
+  }
+}
+
+export async function cleanupStaleInstallBackups(
+  target,
+  {
+    readDirectory = (path) => readdir(path, { withFileTypes: true }),
+    removePath = rm,
+  } = {},
+) {
+  const parent = dirname(target);
+  const prefix = `${basename(target)}.backup-`;
+  const entries = await readDirectory(parent);
+  const backups = entries
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name.startsWith(prefix) &&
+        BACKUP_ID_PATTERN.test(entry.name.slice(prefix.length)),
+    )
+    .map((entry) => join(parent, entry.name))
+    .sort();
+  const results = [];
+  for (const backup of backups) {
+    results.push(await removeBackup(backup, removePath));
+  }
+  return results;
 }
 
 export async function atomicReplaceDirectory({
@@ -60,7 +136,13 @@ export async function atomicReplaceDirectory({
     }
     throw error;
   }
+  let backupCleanup;
   if (backedUp) {
-    await removePath(backup, { recursive: true, force: true });
+    backupCleanup = await removeBackup(backup, removePath);
   }
+  return {
+    status: "activated",
+    target,
+    ...(backupCleanup ? { backupCleanup } : {}),
+  };
 }

@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "matrix": "graphvigil-host-compatibility",
+  "scope": [
+    "Validates repository-owned integration contracts for every documented GraphVigil host.",
+    "Uses committed files only and makes no network requests or provider calls.",
+    "Does not claim that an unrecorded live host version has been tested."
+  ],
+  "hosts": [
+    {
+      "id": "codex",
+      "displayName": "Codex",
+      "integration": "plugin",
+      "promptReview": "project-instructions",
+      "versionCoverage": {
+        "status": "contract-only",
+        "testedVersions": [],
+        "liveEvidence": []
+      },
+      "capabilities": {
+        "promptRefinement": "verified-by-repository",
+        "graphPlanning": "verified-by-repository",
+        "skills": "verified-by-repository",
+        "runtimeIdentity": "verified-by-repository"
+      },
+      "evidence": [
+        "plugins/prompt-refiner/.codex-plugin/plugin.json",
+        "plugins/prompt-refiner/skills/improve-prompt/SKILL.md",
+        "scripts/verify-install.mjs"
+      ]
+    },
+    {
+      "id": "claude",
+      "displayName": "Claude Code",
+      "integration": "plugin",
+      "promptReview": "hook",
+      "versionCoverage": {
+        "status": "contract-only",
+        "testedVersions": [],
+        "liveEvidence": []
+      },
+      "capabilities": {
+        "promptRefinement": "verified-by-repository",
+        "graphPlanning": "verified-by-repository",
+        "skills": "verified-by-repository",
+        "runtimeIdentity": "verified-by-repository"
+      },
+      "evidence": [
+        "plugins/prompt-refiner/.claude-plugin/plugin.json",
+        "plugins/prompt-refiner/hooks/hooks.json",
+        "scripts/verify-install.mjs"
+      ]
+    },
+    {
+      "id": "cursor",
+      "displayName": "Cursor",
+      "integration": "plugin",
+      "promptReview": "rule",
+      "versionCoverage": {
+        "status": "contract-only",
+        "testedVersions": [],
+        "liveEvidence": []
+      },
+      "capabilities": {
+        "promptRefinement": "verified-by-repository",
+        "graphPlanning": "verified-by-repository",
+        "skills": "verified-by-repository",
+        "runtimeIdentity": "verified-by-repository"
+      },
+      "evidence": [
+        "plugins/prompt-refiner/.cursor-plugin/plugin.json",
+        "plugins/prompt-refiner/rules/prompt-refinement.mdc",
+        "plugins/prompt-refiner/cursor.mcp.json"
+      ]
+    },
+    {
+      "id": "copilot",
+      "displayName": "GitHub Copilot CLI",
+      "integration": "plugin",
+      "promptReview": "hook",
+      "versionCoverage": {
+        "status": "contract-only",
+        "testedVersions": [],
+        "liveEvidence": []
+      },
+      "capabilities": {
+        "promptRefinement": "verified-by-repository",
+        "graphPlanning": "verified-by-repository",
+        "skills": "verified-by-repository",
+        "runtimeIdentity": "verified-by-repository"
+      },
+      "evidence": [
+        "plugins/prompt-refiner/plugin.json",
+        "plugins/prompt-refiner/hooks/copilot-prompt-refiner-hook.mjs",
+        "plugins/prompt-refiner/copilot.mcp.json"
+      ]
+    },
+    {
+      "id": "hermes",
+      "displayName": "Hermes Agent",
+      "integration": "generated-config",
+      "promptReview": "project-instructions",
+      "versionCoverage": {
+        "status": "contract-only",
+        "testedVersions": [],
+        "liveEvidence": []
+      },
+      "capabilities": {
+        "promptRefinement": "verified-by-repository",
+        "graphPlanning": "verified-by-repository",
+        "skills": "verified-by-repository",
+        "runtimeIdentity": "verified-by-repository"
+      },
+      "evidence": [
+        "scripts/hermes-config-lib.mjs",
+        "test/platform-plugins.test.ts",
+        "docs/installation.md"
+      ]
+    }
+  ]
+}

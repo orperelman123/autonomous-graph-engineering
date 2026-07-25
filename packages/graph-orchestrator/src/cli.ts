@@ -5,6 +5,7 @@ import { runGraphEvaluation } from "./evaluation.js";
 import { gradeCheckpoint } from "./grader.js";
 import { loadCheckpoint } from "./persistence.js";
 import { createPortableRunReport } from "./report.js";
+import { startLocalDashboard } from "./dashboard.js";
 import {
   reconcileCheckpoint,
   reconciliationNeeds,
@@ -34,6 +35,7 @@ function usage(): never {
   graph-engineer resume [--approve graph-id:fingerprint:gate-id] <run-id>
   graph-engineer inspect <run-id>
   graph-engineer report <run-id>
+  graph-engineer dashboard [port]
   graph-engineer reconcile <run-id> <node-id> --token <token> --outcome completed|not_applied --evidence <text> [--output-json <json>] [--termination-json <json>]
   graph-engineer grade <run-id>
   graph-engineer semantic-grade <run-id> <corpus.json> <case-id>
@@ -102,6 +104,26 @@ async function main(): Promise<void> {
       const address = server.address();
       process.stderr.write(
         `graph-engineer listening on ${typeof address === "object" && address ? address.port : port}\n`,
+      );
+    });
+    return;
+  }
+  if (command === "dashboard") {
+    const port = args[0] ? Number(args[0]) : undefined;
+    const server = startLocalDashboard({
+      ...(port === undefined ? {} : { port }),
+      ...(configuredAuditDirectory
+        ? { directory: configuredAuditDirectory }
+        : {}),
+    });
+    server.on("listening", () => {
+      const address = server.address();
+      process.stderr.write(
+        `GraphVigil dashboard listening on ${
+          typeof address === "object" && address
+            ? `http://127.0.0.1:${address.port}`
+            : "loopback"
+        }\n`,
       );
     });
     return;

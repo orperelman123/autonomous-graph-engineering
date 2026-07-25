@@ -78,6 +78,11 @@ the official SDK configuration, reinstall with explicit activation:
 npm run install:local -- --with-atbash --enable-atbash
 ```
 
+Activation now fails before build or installation unless non-empty
+`ATBASH_AGENT_KEY` and `ATBASH_ORG_NAME` values are already present in the
+installer process environment. This prevents generating an enabled MCP
+configuration that can only fail closed because onboarding is incomplete.
+
 The installer uses the exact SDK version declared by Graph Engineer, disables
 dependency lifecycle scripts, stages the result transactionally, and does not
 write Atbash credentials into the generated MCP manifests.
@@ -96,8 +101,10 @@ Optional official SDK settings include `ATBASH_ENDPOINT`,
 
 The integration calls the SDK's high-level `auditToolCall()` API with
 `failClosed: true`. It respects the SDK's final `allow` decision, maps a denied
-`HOLD` to a held graph execution, and maps denied `BLOCK`, `ERROR`, missing
-configuration, unavailable SDK, and unrecognized responses to a blocked
-execution. Put the Atbash organization into enforcement mode when policy
+`HOLD` to a held graph execution, and maps a denied `BLOCK` to a blocked
+execution. `ERROR`, missing configuration, an unavailable SDK, and
+unrecognized responses still deny execution but are reported as provider
+unavailability rather than a policy block. Private provider diagnostics remain
+excluded. Put the Atbash organization into enforcement mode when policy
 verdicts must actively stop actions; monitor mode can intentionally return an
 allow decision while recording a non-allow verdict.

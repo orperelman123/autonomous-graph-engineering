@@ -3,6 +3,12 @@ import { resolve } from "node:path";
 import { loadCheckpoint } from "./persistence.js";
 import { graphFingerprint } from "./runtime.js";
 import { validateGraph } from "./validator.js";
+import type { GraphRunEvent } from "./types.js";
+import {
+  runExtensionGraders,
+  type GraphGrader,
+  type RunExtensionGradersOptions,
+} from "./extensions.js";
 
 export interface RunGradeCriterion {
   id: string;
@@ -29,6 +35,10 @@ function selected(value: unknown, path: string): unknown {
 export async function gradeCheckpoint(
   directory: string,
   runId: string,
+  options: {
+    graders?: readonly GraphGrader[];
+    graderLimits?: RunExtensionGradersOptions;
+  } = {},
 ): Promise<RunGrade> {
   const checkpoint = await loadCheckpoint(directory, runId);
   const validation = validateGraph(checkpoint.graph);
@@ -127,6 +137,22 @@ export async function gradeCheckpoint(
       detail: `${consumed}/${checkpoint.graph.budgets.maxActualTokens ?? checkpoint.graph.budgets.maxEstimatedTokens} tokens`,
     },
   ];
+  criteria.push(
+    ...(await runExtensionGraders(
+      options.graders ?? [],
+      {
+        version: "1",
+        checkpoint,
+        auditEvents: events.map((event) => ({
+          sequence: event.sequence ?? 0,
+          runId: event.runId ?? "",
+          timestamp: "",
+          type: (event.type ?? "run_failed") as GraphRunEvent["type"],
+        })),
+      },
+      options.graderLimits,
+    )),
+  );
   const passedCount = criteria.filter((criterion) => criterion.passed).length;
   return {
     runId: checkpoint.runId,

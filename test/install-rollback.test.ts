@@ -1,16 +1,57 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import {
+  assertAtbashActivationReady,
   atomicReplaceDirectory,
+  cleanupStaleInstallBackups,
+  renderRetainedBackupWarning,
   withInstallLock,
 } from "../scripts/install-lib.mjs";
 
 const execute = promisify(execFile);
+
+test("Atbash activation requires private process configuration before installation", () => {
+  assert.throws(
+    () => assertAtbashActivationReady({}),
+    /ATBASH_AGENT_KEY and ATBASH_ORG_NAME/,
+  );
+  assert.throws(
+    () =>
+      assertAtbashActivationReady({
+        ATBASH_AGENT_KEY: "configured",
+        ATBASH_ORG_NAME: " ",
+      }),
+    /ATBASH_ORG_NAME/,
+  );
+  assert.doesNotThrow(() =>
+    assertAtbashActivationReady({
+      ATBASH_AGENT_KEY: "configured",
+      ATBASH_ORG_NAME: "configured",
+    }),
+  );
+});
+
+test("locked-backup remediation distinguishes activation from stale host state", () => {
+  const warning = renderRetainedBackupWarning(1);
+  assert.match(warning, /active installation passed verification/i);
+  assert.match(warning, /previous MCP runtime loaded/i);
+  assert.match(warning, /get_runtime_info/);
+  assert.match(warning, /status=current/);
+  assert.match(warning, /rerun the installer/);
+  assert.equal(renderRetainedBackupWarning(0), "");
+});
 
 test("restores the previous installation when post-activation verification fails", async () => {
   const directory = await mkdtemp(join(tmpdir(), "graph-install-rollback-"));
@@ -34,6 +75,108 @@ test("restores the previous installation when post-activation verification fails
     );
 
     assert.equal(await readFile(join(target, "marker.txt"), "utf8"), "known-good");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("retains a locked backup after verified activation without reporting failure", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-install-locked-"));
+  const target = join(directory, "prompt-refiner");
+  const staged = join(directory, "prompt-refiner.installing");
+  try {
+    await mkdir(target);
+    await mkdir(staged);
+    await writeFile(join(target, "marker.txt"), "known-good", "utf8");
+    await writeFile(join(staged, "marker.txt"), "verified-candidate", "utf8");
+
+    const result = await atomicReplaceDirectory({
+      staged,
+      target,
+      verify: async (installed) => {
+        assert.equal(
+          await readFile(join(installed, "marker.txt"), "utf8"),
+          "verified-candidate",
+        );
+      },
+      removePath: async (path, options) => {
+        if (path.includes(".backup-")) {
+          throw Object.assign(new Error("native module is locked"), {
+            code: "EPERM",
+          });
+        }
+        await rm(path, options);
+      },
+    });
+
+    assert.equal(result.status, "activated");
+    assert.equal(result.backupCleanup?.status, "retained");
+    assert.equal(result.backupCleanup?.reason, "EPERM");
+    assert.equal(
+      await readFile(join(target, "marker.txt"), "utf8"),
+      "verified-candidate",
+    );
+    const entries = await readdir(directory);
+    assert.equal(
+      entries.filter((entry) => entry.startsWith("prompt-refiner.backup-"))
+        .length,
+      1,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("stale cleanup removes only exact backups and retains locked directories", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-install-cleanup-"));
+  const target = join(directory, "prompt-refiner");
+  const removable = join(
+    directory,
+    "prompt-refiner.backup-11111111-1111-4111-8111-111111111111",
+  );
+  const locked = join(
+    directory,
+    "prompt-refiner.backup-22222222-2222-4222-8222-222222222222",
+  );
+  const lookalike = join(directory, "prompt-refiner.backup-not-a-run-id");
+  try {
+    await mkdir(removable);
+    await mkdir(locked);
+    await mkdir(lookalike);
+    const results = await cleanupStaleInstallBackups(target, {
+      removePath: async (path, options) => {
+        if (path === locked) {
+          throw Object.assign(new Error("directory is busy"), {
+            code: "EBUSY",
+          });
+        }
+        await rm(path, options);
+      },
+    });
+
+    assert.deepEqual(
+      results.map(({ path, status, reason }) => ({
+        name: path.split(/[\\/]/).at(-1),
+        status,
+        reason,
+      })),
+      [
+        {
+          name: "prompt-refiner.backup-11111111-1111-4111-8111-111111111111",
+          status: "removed",
+          reason: undefined,
+        },
+        {
+          name: "prompt-refiner.backup-22222222-2222-4222-8222-222222222222",
+          status: "retained",
+          reason: "EBUSY",
+        },
+      ],
+    );
+    assert.deepEqual((await readdir(directory)).sort(), [
+      "prompt-refiner.backup-22222222-2222-4222-8222-222222222222",
+      "prompt-refiner.backup-not-a-run-id",
+    ]);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

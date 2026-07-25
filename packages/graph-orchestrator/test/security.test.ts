@@ -188,15 +188,18 @@ test("native Atbash provider uses the official SDK decision contract", async () 
   ]);
 });
 
-test("native Atbash provider denies error and unknown verdicts", async () => {
-  for (const verdict of ["ERROR", "No verdict"]) {
+test("native Atbash provider distinguishes unavailable and invalid responses", async () => {
+  for (const [verdict, expected] of [
+    ["ERROR", /authorization unavailable/],
+    ["No verdict", /response is invalid/],
+  ] as const) {
     const provider = new AtbashSecurityProvider({
       async auditToolCall() {
         return { allow: false, verdict };
       },
     });
-    assert.deepEqual(
-      await provider.authorize({
+    await assert.rejects(
+      provider.authorize({
         version: "1",
         runId: "run",
         nodeId: "node",
@@ -206,7 +209,7 @@ test("native Atbash provider denies error and unknown verdicts", async () => {
         inputSha256: "b".repeat(64),
         timeoutMs: 1_000,
       }),
-      { decision: "block" },
+      expected,
     );
   }
 });

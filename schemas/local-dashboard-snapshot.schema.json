@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/local-dashboard-snapshot.schema.json",
+  "title": "GraphVigil Local Dashboard Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "surface", "compatibility", "truncated", "runs"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "surface": { "const": "graphvigil-local-dashboard" },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "hosts"],
+      "properties": {
+        "status": { "const": "contract-only" },
+        "hosts": {
+          "const": ["codex", "claude", "cursor", "copilot", "hermes"]
+        }
+      }
+    },
+    "truncated": { "type": "boolean" },
+    "runs": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/validRun" },
+          { "$ref": "#/$defs/invalidRun" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "validRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "state",
+        "status",
+        "updatedAt",
+        "graphFingerprint",
+        "integrityVerified",
+        "auditSequenceVerified",
+        "repairRounds",
+        "budgets",
+        "usage",
+        "verifier"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^(?!(?:constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "state": { "enum": ["valid", "stale"] },
+        "status": {
+          "enum": ["running", "completed", "failed", "needs_confirmation"]
+        },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "graphFingerprint": { "type": "string", "minLength": 1 },
+        "integrityVerified": { "type": "boolean" },
+        "auditSequenceVerified": { "type": "boolean" },
+        "repairRounds": { "type": "integer", "minimum": 0 },
+        "budgets": { "$ref": "#/$defs/budgets" },
+        "usage": { "$ref": "#/$defs/usage" },
+        "verifier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["accepted", "reasonCount"],
+          "properties": {
+            "accepted": { "type": ["boolean", "null"] },
+            "reasonCount": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "invalidRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "state", "error"],
+      "properties": {
+        "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "state": { "const": "invalid" },
+        "error": {
+          "enum": [
+            "duplicate_run_identity",
+            "invalid_run_artifacts",
+            "missing_run_artifacts",
+            "oversized_run_artifacts",
+            "symlink_run_artifacts"
+          ]
+        }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxNodes",
+        "maxParallel",
+        "maxFanout",
+        "maxDepth",
+        "maxRepairRounds",
+        "timeoutMs",
+        "maxEstimatedTokens"
+      ],
+      "properties": {
+        "maxNodes": { "type": "integer", "minimum": 1 },
+        "maxParallel": { "type": "integer", "minimum": 1 },
+        "maxFanout": { "type": "integer", "minimum": 1 },
+        "maxDepth": { "type": "integer", "minimum": 1 },
+        "maxRepairRounds": { "type": "integer", "minimum": 0 },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "maxEstimatedTokens": { "type": "integer", "minimum": 1 },
+        "maxActualTokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "cachedInputTokens": { "type": "integer", "minimum": 0 },
+        "cacheCreationInputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 },
+        "reasoningOutputTokens": { "type": "integer", "minimum": 0 },
+        "costUsd": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

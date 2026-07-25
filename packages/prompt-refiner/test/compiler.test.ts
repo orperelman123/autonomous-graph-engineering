@@ -126,6 +126,88 @@ test("does not request consequential permission for explicitly negated actions",
   }
 });
 
+test("distinguishes privileged execution from technical access vocabulary", () => {
+  for (const prompt of [
+    "Investigate the root cause of the parser bug.",
+    "Review the admin dashboard.",
+    "Audit root certificate handling.",
+    "Explain why elevated_access was inferred.",
+    "Audit the root cause; no elevated access is authorized.",
+    "Review the sudo access policy without using sudo.",
+  ]) {
+    const result = compilePrompt({ prompt, mode: "strict" });
+    assert.deepEqual(result.brief.permissionsRequired, [], prompt);
+  }
+
+  for (const prompt of [
+    "Build the service with sudo access.",
+    "Run the installer as root.",
+    "Use elevated permissions to install it.",
+    "Review this operation using the explicitly approved admin access.",
+    "Elevated permissions are required for this installation.",
+    "sudo apt-get install the package",
+  ]) {
+    const result = compilePrompt({ prompt, mode: "strict" });
+    assert.deepEqual(
+      result.brief.permissionsRequired,
+      ["elevated_access"],
+      prompt,
+    );
+  }
+});
+
+test("includes project context only when the caller supplies it", () => {
+  const absent = compilePrompt({ prompt: "Review the parser." });
+  assert.deepEqual(absent.brief.context, []);
+
+  const explicit = compilePrompt({
+    prompt: "Review the parser.",
+    context: {
+      projectName: "exact-project",
+      cwd: "C:\\workspace\\exact-project",
+      frameworks: ["typescript"],
+    },
+  });
+  assert.deepEqual(explicit.brief.context, [
+    "Context source: caller supplied",
+    "Project: exact-project",
+    "Working directory: C:\\workspace\\exact-project",
+    "Detected stack: typescript",
+  ]);
+});
+
+test("normalizes and bounds caller context at the compiler boundary", () => {
+  const normalized = compilePrompt({
+    prompt: "Review the parser.",
+    context: {
+      frameworks: ["typescript", "typescript", "react"],
+      instructions: ["Keep compatibility.", "Keep compatibility."],
+    },
+  });
+  assert.deepEqual(normalized.brief.context, [
+    "Context source: caller supplied",
+    "Detected stack: typescript, react",
+    "Keep compatibility.",
+  ]);
+
+  assert.throws(
+    () =>
+      compilePrompt({
+        prompt: "Review the parser.",
+        context: { frameworks: ["typescript", 42] } as never,
+      }),
+    /context\.frameworks must contain only strings/,
+  );
+  assert.throws(
+    () =>
+      compilePrompt({
+        prompt: "Review the parser.",
+        context: { projectName: { forged: true } } as never,
+      }),
+    /context\.projectName must be a string/,
+  );
+});
+
 test("ends negation scope at an explicit positive contrast", () => {
   const external = compilePrompt({
     prompt:
@@ -147,7 +229,7 @@ test("ends negation scope at an explicit positive contrast", () => {
 
 test("built-in evaluation suite passes", () => {
   const report = runEvaluation();
-  assert.equal(report.total, 30);
+  assert.equal(report.total, 34);
   assert.equal(report.failed, 0, JSON.stringify(report, null, 2));
   assert.equal(report.passRate, 1);
 });

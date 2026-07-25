@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/community-graph-template.schema.json",
+  "title": "GraphVigil Community Graph Template",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "title",
+    "summary",
+    "provenance",
+    "compatibility",
+    "graph"
+  ],
+  "properties": {
+    "version": { "const": "1.0" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,63}$"
+    },
+    "title": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "summary": { "type": "string", "minLength": 10, "maxLength": 500 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "license", "maintainers", "graphSha256"],
+      "properties": {
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository", "path", "revision"],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https://"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._/-]+$",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            }
+          }
+        },
+        "license": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spdx"],
+          "properties": {
+            "spdx": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9-.+]+$"
+            }
+          }
+        },
+        "maintainers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+              },
+              "name": { "type": "string", "minLength": 2, "maxLength": 100 }
+            }
+          }
+        },
+        "graphSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["graphSchemaVersion", "graphvigilVersion", "hosts"],
+      "properties": {
+        "graphSchemaVersion": { "const": "1.0" },
+        "graphvigilVersion": {
+          "type": "string",
+          "pattern": "^0\\.3\\.3$"
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status"],
+            "properties": {
+              "id": {
+                "enum": ["codex", "claude", "cursor", "copilot", "hermes"]
+              },
+              "status": { "const": "contract-only" }
+            }
+          }
+        }
+      }
+    },
+    "graph": {
+      "$ref": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/autonomous-graph.schema.json"
+    }
+  }
+}

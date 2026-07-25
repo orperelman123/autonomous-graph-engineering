@@ -19,6 +19,17 @@ export type {
 export { PROMPT_REFINER_VERSION } from "./version.js";
 export { collectContext } from "./context.js";
 export {
+  assertEffectivePromptWithinBudget,
+  getPromptContextSource,
+  normalizePromptContext,
+  PROMPT_CONTEXT_LIMITS,
+  renderPromptContextLines,
+} from "./context-policy.js";
+export type {
+  NormalizedPromptContext,
+  PromptContextSource,
+} from "./context-policy.js";
+export {
   buildHookFailureResponse,
   buildHookResponse,
 } from "./hook.js";

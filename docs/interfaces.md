@@ -18,6 +18,22 @@ The standalone wrappers accept prompt-refiner options only; they do not forward
 arbitrary flags to the underlying agent. Use `--` when the prompt itself begins
 with a double-dash token.
 
+### Prompt context trust and bounds
+
+Every `RefineRequest.context` is normalized at the deterministic compiler
+boundary before HTTP, MCP, hooks, CLI, runners, wrappers, or semantic providers
+can use it. The runtime accepts only the six version-1 context fields, rejects
+malformed or unknown values, deduplicates arrays in first-seen order, records
+caller-versus-filesystem attribution, and enforces aggregate UTF-8 byte limits.
+Semantic output is rendered through the same effective-prompt byte guard and
+falls back to the deterministic result if it exceeds the limit.
+
+The current limits are exported as `PROMPT_CONTEXT_LIMITS`: 8,192 characters
+per scalar, 32 items per array, 1,024 characters per array item, 65,536 UTF-8
+bytes of rendered context, and 1,048,576 UTF-8 bytes in the effective prompt.
+The public provenance marker is intentionally read-only; callers cannot mark
+their own context as filesystem-derived.
+
 ## Graph Engineer CLI
 
 ```bash
@@ -30,6 +46,7 @@ graph-engineer run-file [--approve <token>] <graph.json>
 graph-engineer resume [--approve <token>] <run-id>
 graph-engineer inspect <run-id>
 graph-engineer report <run-id>
+graph-engineer dashboard [port]
 graph-engineer reconcile <run-id> <node-id> --token <token> \
   --outcome completed|not_applied --evidence <text> [--output-json <json>] \
   [--termination-json <json>]
@@ -47,6 +64,12 @@ states, usage, verifier acceptance, ordered lifecycle evidence, and SHA-256
 artifact digests. Free-text goals, prompts, labels, outputs, verifier reasons,
 errors, audit payloads, and local paths are omitted by design. The output
 satisfies [`portable-run-report.schema.json`](../schemas/portable-run-report.schema.json).
+
+`graph-engineer dashboard [port]` starts the optional fixed-route,
+loopback-only read surface over existing audit artifacts. It does not expose an
+approval, resume, reconciliation, mutation, or arbitrary-file endpoint. See
+the [local dashboard guide](local-dashboard.md) for its redaction and resource
+limits.
 
 Side-effecting executor requests carry a stable `idempotencyKey` for the logical
 node and a unique `attemptId` for the concrete invocation. A timeout is an
@@ -128,6 +151,11 @@ Send `Authorization: Bearer <random-secret>` to `/v1/` endpoints. Put the servic
 - [`portable-run-report.schema.json`](../schemas/portable-run-report.schema.json)
 - [`benchmark-report.schema.json`](../schemas/benchmark-report.schema.json)
 - [`provider-benchmark-report.schema.json`](../schemas/provider-benchmark-report.schema.json)
+- [`host-compatibility-matrix.schema.json`](../schemas/host-compatibility-matrix.schema.json)
+- [`host-compatibility-report.schema.json`](../schemas/host-compatibility-report.schema.json)
+- [`community-graph-template.schema.json`](../schemas/community-graph-template.schema.json)
+- [`community-template-report.schema.json`](../schemas/community-template-report.schema.json)
+- [`local-dashboard-snapshot.schema.json`](../schemas/local-dashboard-snapshot.schema.json)
 - [`live-provider-benchmark-plan.schema.json`](../schemas/live-provider-benchmark-plan.schema.json)
 - [`live-provider-benchmark-report.schema.json`](../schemas/live-provider-benchmark-report.schema.json)
 

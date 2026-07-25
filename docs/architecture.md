@@ -27,6 +27,11 @@ The design favors:
 
 The deterministic compiler is the default. Optional provider refinement may improve the brief but must pass local permission-preservation checks.
 
+All entrypoints converge on one prompt-context policy before compilation or
+semantic refinement. It accepts only the versioned public context fields,
+records caller-versus-filesystem provenance, deduplicates arrays, and enforces
+per-value, aggregate-context, and final-effective-prompt bounds.
+
 ### Planner and validator
 
 The graph planner routes focused tasks directly and broad tasks through decomposition, bounded parallel investigation, deterministic reduction, adversarial cross-checking, synthesis, and acceptance.
@@ -64,6 +69,24 @@ Child processes:
 - have bounded output capture;
 - receive abort signals and process-tree termination on timeout;
 - cannot expand the graph's declared node permission.
+
+Repository-local programs may register trusted executors and artifact graders
+through `GraphExtensionRegistry`. Executor registrations declare an explicit
+permission allowlist; grader results are ordered, bounded, timed, and
+namespaced. Extensions remain trusted in-process code and are not a sandbox or
+plugin-discovery mechanism.
+
+### Read-only distribution and inspection surfaces
+
+Community templates wrap ordinary validated graphs with canonical provenance,
+license, maintainer, and conservative host-compatibility metadata. The initial
+contract permits only `plan_only` or `read_only` graphs and is verified
+offline against both schemas and runtime policy.
+
+The optional local dashboard reads existing checkpoint and audit artifacts and
+derives a strict redacted snapshot from the portable report producer. It binds
+only to loopback, exposes fixed read-only routes, and cannot approve, resume,
+reconcile, mutate, or authorize a run.
 
 ### Verification and repair
 

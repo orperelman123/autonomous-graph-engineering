@@ -221,6 +221,43 @@ test("provider-envelope benchmark satisfies its strict public report schema", as
   );
 });
 
+test("host compatibility fixture and report satisfy their strict public schemas", async () => {
+  const validateMatrix = await validator(
+    "host-compatibility-matrix.schema.json",
+  );
+  const validateReport = await validator(
+    "host-compatibility-report.schema.json",
+  );
+  const matrix = JSON.parse(
+    await readFile(
+      new URL("../compatibility/host-matrix.v1.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    validateMatrix(matrix),
+    true,
+    JSON.stringify(validateMatrix.errors, null, 2),
+  );
+  const duplicateMatrix = structuredClone(matrix);
+  duplicateMatrix.hosts[4] = structuredClone(duplicateMatrix.hosts[0]);
+  assert.equal(validateMatrix(duplicateMatrix), false);
+  const { stdout } = await execute(
+    process.execPath,
+    ["scripts/compatibility-matrix.mjs"],
+    { cwd: process.cwd() },
+  );
+  const report = JSON.parse(stdout);
+  assert.equal(
+    validateReport(report),
+    true,
+    JSON.stringify(validateReport.errors, null, 2),
+  );
+  const duplicateReport = structuredClone(report);
+  duplicateReport.cases[4] = structuredClone(duplicateReport.cases[0]);
+  assert.equal(validateReport(duplicateReport), false);
+});
+
 test("live provider benchmark dry-run satisfies its strict public contracts", async () => {
   const validatePlan = await validator("live-provider-benchmark-plan.schema.json");
   const validateReport = await validator(

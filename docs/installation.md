@@ -36,6 +36,19 @@ both installed MCP servers are launched and identity-checked before the
 previous bundle is removed. If post-activation verification fails, the previous
 bundle is restored. An atomic lock prevents concurrent installers from
 interleaving.
+
+On Windows, a running host can keep the previous Atbash native module locked
+after the new bundle has already passed verification. `EPERM`, `EBUSY`, or
+`ENOTEMPTY` during post-verification backup removal no longer turns that
+successful activation into a reported installation failure. The installer
+retains the exact `prompt-refiner.backup-<uuid>` directory and prints a
+warning that distinguishes the verified active installation from the stale
+host process. Reload every host, require `get_runtime_info` to report
+`status: "current"`, then rerun the installer; its bounded startup cleanup
+removes unlocked exact-name backups and ignores lookalike directories. Do not
+force-delete a retained backup while a host still has the previous runtime
+loaded.
+
 Each activation writes a non-secret installation identity shared by both MCP
 servers. A process that was already running can compare its boot identity with
 the active manifest and report that a reload is required.
@@ -99,6 +112,10 @@ npm run verify:install -- --expect-atbash
 See [External security provider](external-security-provider.md) for onboarding,
 explicit activation, data boundaries, failure behavior, and private
 configuration requirements.
+
+`--enable-atbash` is rejected before installation unless non-empty
+`ATBASH_AGENT_KEY` and `ATBASH_ORG_NAME` values are present in that installer
+process. Keep using `--with-atbash` alone until private onboarding is complete.
 
 ## Claude Code
 

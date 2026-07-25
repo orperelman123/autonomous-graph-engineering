@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/community-template-report.schema.json",
+  "title": "GraphVigil Community Template Verification Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "verifier", "passed", "templates", "errors"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "verifier": { "const": "graphvigil-community-template" },
+    "passed": { "type": "boolean" },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "sha256", "graphSha256", "hosts", "passed"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "graphSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "hosts": {
+            "type": "array",
+            "items": {
+              "enum": ["codex", "claude", "cursor", "copilot", "hermes"]
+            }
+          },
+          "passed": { "type": "boolean" }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

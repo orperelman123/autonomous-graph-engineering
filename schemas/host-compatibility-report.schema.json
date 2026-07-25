@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/host-compatibility-report.schema.json",
+  "title": "GraphVigil Host Compatibility Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "benchmark", "fixture", "scope", "passed", "cases"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "benchmark": { "const": "offline-host-contract-compatibility" },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "const": "compatibility/host-matrix.v1.json" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "passed": { "type": "boolean" },
+    "cases": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "allOf": [
+        { "contains": { "type": "object", "properties": { "host": { "const": "codex" } }, "required": ["host"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "host": { "const": "claude" } }, "required": ["host"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "host": { "const": "cursor" } }, "required": ["host"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "host": { "const": "copilot" } }, "required": ["host"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "host": { "const": "hermes" } }, "required": ["host"] }, "minContains": 1, "maxContains": 1 }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["host", "passed", "evidence"],
+        "properties": {
+          "host": { "enum": ["codex", "claude", "cursor", "copilot", "hermes"] },
+          "passed": { "type": "boolean" },
+          "evidence": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "exists"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "exists": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

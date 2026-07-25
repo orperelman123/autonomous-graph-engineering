@@ -10,6 +10,7 @@ import { planGraph } from "../src/planner.js";
 import { graphFingerprint } from "../src/runtime.js";
 import { startGraphServer } from "../src/server.js";
 import type { GraphRunCheckpoint } from "../src/types.js";
+import "./dashboard.test.js";
 
 async function stopChild(child: ReturnType<typeof spawn>): Promise<void> {
   if (child.exitCode !== null) return;

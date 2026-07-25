@@ -1,0 +1,141 @@
+{
+  "version": "1.0",
+  "id": "repository-audit",
+  "title": "Bounded repository audit",
+  "summary": "A read-only, independently verified repository audit template with explicit budgets and no external side effects.",
+  "provenance": {
+    "origin": {
+      "repository": "https://github.com/orperelman123/autonomous-graph-engineering",
+      "path": "examples/repository-audit.graph.json",
+      "revision": "c9b42f46bc89fe21b3e0ac6d19cd5603836a85e3"
+    },
+    "license": {
+      "spdx": "MIT"
+    },
+    "maintainers": [
+      {
+        "id": "graphvigil-maintainers",
+        "name": "GraphVigil maintainers"
+      }
+    ],
+    "graphSha256": "8825cd4454420ea1d858959c1217f6ec44b2bbad14822ee2d908ac2730b3acb8"
+  },
+  "compatibility": {
+    "graphSchemaVersion": "1.0",
+    "graphvigilVersion": "0.3.3",
+    "hosts": [
+      {
+        "id": "codex",
+        "status": "contract-only"
+      },
+      {
+        "id": "claude",
+        "status": "contract-only"
+      },
+      {
+        "id": "cursor",
+        "status": "contract-only"
+      },
+      {
+        "id": "copilot",
+        "status": "contract-only"
+      },
+      {
+        "id": "hermes",
+        "status": "contract-only"
+      }
+    ]
+  },
+  "graph": {
+    "version": "1.0",
+    "id": "starter-repository-audit",
+    "goal": "Audit this repository read-only, investigate components independently, deduplicate findings, and verify every claim.",
+    "originalPromptHash": "40df2fc1bcf5f9de53a28c08b690392958d174ec99b47808433b28d0e5c444fd",
+    "autonomy": "read_only",
+    "createdAt": "2026-07-24T00:00:00.000Z",
+    "budgets": {
+      "maxNodes": 8,
+      "maxParallel": 2,
+      "maxFanout": 4,
+      "maxDepth": 4,
+      "maxRepairRounds": 0,
+      "timeoutMs": 600000,
+      "maxEstimatedTokens": 80000,
+      "maxActualTokens": 200000
+    },
+    "nodes": [
+      {
+        "id": "scope",
+        "label": "Select repository components",
+        "kind": "agent",
+        "dependsOn": [],
+        "permission": "read",
+        "executor": "codex",
+        "prompt": "Inspect the repository and return at most four bounded components as JSON {\"items\":[{\"id\":\"...\",\"task\":\"...\"}]}.",
+        "outputSchema": {
+          "type": "object",
+          "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "task"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "task": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "investigate",
+        "label": "Inspect components independently",
+        "kind": "parallel_map",
+        "dependsOn": ["scope"],
+        "permission": "read",
+        "executor": "codex",
+        "prompt": "Inspect only this component. Return findings, exact file evidence, uncertainty, and verification steps.",
+        "inputPath": "items",
+        "maxConcurrency": 2
+      },
+      {
+        "id": "reduce",
+        "label": "Deduplicate findings",
+        "kind": "reduce",
+        "dependsOn": ["investigate"],
+        "permission": "none",
+        "operation": "dedupe"
+      },
+      {
+        "id": "verify",
+        "label": "Verify the audit",
+        "kind": "verifier",
+        "dependsOn": ["reduce"],
+        "permission": "read",
+        "executor": "claude",
+        "prompt": "Try to disprove each finding against the cited files. Return JSON with accepted:boolean and reasons:string[].",
+        "outputSchema": {
+          "type": "object",
+          "required": ["accepted", "reasons"],
+          "properties": {
+            "accepted": { "type": "boolean" },
+            "reasons": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "example": true,
+      "workflow": "repository-audit",
+      "networkRequired": false,
+      "sideEffects": false,
+      "provenance": "repository-maintained"
+    }
+  }
+}

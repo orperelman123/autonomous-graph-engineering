@@ -85,7 +85,7 @@
           "type": "string"
         },
         "context": {
-          "$ref": "#/$defs/stringArray"
+          "$ref": "#/$defs/boundedContextArray"
         },
         "requirements": {
           "$ref": "#/$defs/stringArray"
@@ -128,7 +128,8 @@
     },
     "effectivePrompt": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 1048576
     },
     "provider": {
       "enum": [
@@ -143,6 +144,16 @@
     }
   },
   "$defs": {
+    "boundedContextArray": {
+      "type": "array",
+      "maxItems": 38,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 65536
+      }
+    },
     "stringArray": {
       "type": "array",
       "items": {

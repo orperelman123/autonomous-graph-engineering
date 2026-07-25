@@ -38,6 +38,13 @@ Acceptance criteria:
 - remove names, absolute user paths, credentials, transcripts, and operational targets;
 - document which commands are offline and which invoke providers.
 
+For a reusable community template, also follow the versioned
+[community graph template contract](community-graph-templates.md). It requires
+canonical provenance, an SPDX license, stable maintainer metadata, bounded
+permissions and budgets, repository-relative origins, conservative host claims,
+and deterministic offline verification. A template never grants authorization;
+the optional official Atbash provider remains an external fail-closed boundary.
+
 ## Platform compatibility
 
 Test one documented workflow on a specific platform.

@@ -73,10 +73,11 @@ export class AtbashSecurityProvider implements GraphSecurityProvider {
     });
     if (result.allow === true) return { decision: "allow" };
     if (result.verdict === "HOLD") return { decision: "hold" };
-    if (result.verdict === "BLOCK" || result.verdict === "ERROR") {
-      return { decision: "block" };
+    if (result.verdict === "BLOCK") return { decision: "block" };
+    if (result.verdict === "ERROR") {
+      throw new Error("Atbash authorization unavailable");
     }
-    return { decision: "block" };
+    throw new Error("Atbash authorization response is invalid");
   }
 }
 

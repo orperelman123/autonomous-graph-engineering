@@ -7,6 +7,10 @@
 | [Developer guide](development.md) | Set up the repository, navigate the code, test changes, and prepare releases |
 | [Architecture](architecture.md) | Understand components, data flow, persistence, gates, and repair |
 | [Interfaces](interfaces.md) | Use CLI, MCP, HTTP, and public JSON contracts |
+| [Executor and grader extensions](extensions.md) | Register trusted, permission-capped executors and bounded artifact graders |
+| [Community graph templates](community-graph-templates.md) | Verify and contribute provenance-bound, read-only graph templates |
+| [Local dashboard](local-dashboard.md) | Inspect redacted run summaries through a loopback-only read surface |
+| [Host compatibility](compatibility.md) | Validate five host contracts without overstating live-version support |
 | [Security model](security-model.md) | Review trust boundaries, invariants, threats, and residual risks |
 | [External security provider](external-security-provider.md) | Configure the optional fail-closed authorization boundary |
 | [Evaluation](evaluation.md) | Understand test and evaluation coverage and its limits |

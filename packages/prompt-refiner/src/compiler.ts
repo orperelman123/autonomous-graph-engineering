@@ -4,6 +4,10 @@ import {
   hashPrompt,
   redactSecrets,
 } from "./security.js";
+import {
+  assertEffectivePromptWithinBudget,
+  normalizePromptContext,
+} from "./context-policy.js";
 import type {
   ExecutionBrief,
   RefineRequest,
@@ -27,6 +31,8 @@ const ADDITIONAL_DESTRUCTIVE =
   /\b(purge|overwrite|shred)\b|\brm\s+-[a-z]*r[a-z]*f\b|\bforce[- ]push\b/i;
 const ADDITIONAL_EXTERNAL =
   /\b(upload|invite|approve|transfer|charge|refund)\b|\b(?:open|create)\s+(?:\w+\s+){0,3}(?:pull request|issue)\b/i;
+const ELEVATED_ACCESS =
+  /(?:\b(?:use|using|with|via|require|requires|need|needs|approved|authorized)\b(?:\s+\w+){0,4}\s+\b(?:sudo|admin(?:istrator)?|root|elevated)\b(?:\s+(?:access|account|credentials?|permissions?|privileges?|rights?|shell|session))?|\b(?:run|execute|operate|install)\b(?:\s+\w+){0,6}\s+\bas\s+(?:root|admin(?:istrator)?)\b|\b(?:sudo|admin(?:istrator)?|root|elevated)\s+(?:access|permissions?|privileges?|rights?)\s+(?:(?:is|are|was|were)\s+)?(?:required|needed|approved|authorized)\b|^\s*sudo\s+\S+)/im;
 
 function actionableText(prompt: string): string {
   return prompt
@@ -44,6 +50,10 @@ function actionableText(prompt: string): string {
     )
     .replace(
       /\b(?:do not|don't|never|avoid)\b[\s\S]*?(?=\b(?:but|however|instead|yet)\b|[.;!?\n]|$)/gi,
+      "",
+    )
+    .replace(
+      /\bno\s+(?:sudo|admin(?:istrator)?|root|elevated|full)\s+(?:access|permissions?|privileges?|rights?)\b/gi,
       "",
     )
     .replace(
@@ -188,7 +198,7 @@ function permissions(
   if (classification === "external_action") {
     result.push("external_side_effect");
   }
-  if (/\b(admin|sudo|root|elevated|full access)\b/i.test(actionable)) {
+  if (ELEVATED_ACCESS.test(actionable)) {
     result.push("elevated_access");
   }
   return result;
@@ -224,22 +234,7 @@ function needsClarification(
 }
 
 function contextLines(request: RefineRequest): string[] {
-  const context = request.context;
-  if (!context) return [];
-  const result: string[] = [];
-  if (context.projectName) result.push(`Project: ${context.projectName}`);
-  if (context.cwd) result.push(`Working directory: ${context.cwd}`);
-  if (context.frameworks?.length) {
-    result.push(`Detected stack: ${context.frameworks.join(", ")}`);
-  }
-  if (context.availableTools?.length) {
-    result.push(`Available tools: ${context.availableTools.join(", ")}`);
-  }
-  if (context.conversationSummary) {
-    result.push(`Conversation context: ${context.conversationSummary}`);
-  }
-  if (context.instructions?.length) result.push(...context.instructions);
-  return result;
+  return normalizePromptContext(request.context)?.lines ?? [];
 }
 
 export function renderEffectivePrompt(
@@ -351,10 +346,9 @@ export function compilePrompt(request: RefineRequest): RefinementResult {
     createdAt: new Date().toISOString(),
   };
 
-  return {
-    ...withoutEffective,
-    effectivePrompt: renderEffectivePrompt(safePrompt, withoutEffective),
-  };
+  const effectivePrompt = renderEffectivePrompt(safePrompt, withoutEffective);
+  assertEffectivePromptWithinBudget(effectivePrompt);
+  return { ...withoutEffective, effectivePrompt };
 }
 
 export function assertPermissionPreservation(

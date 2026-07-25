@@ -44,12 +44,7 @@ export function startServer(options: {
       const body = (await readBody(request)) as Record<string, unknown>;
       if (request.url === "/v1/refine") {
         const refineRequest = body as unknown as RefineRequest;
-        const context = refineRequest.context ?? (await collectContext());
-        json(
-          response,
-          200,
-          await refinePrompt({ ...refineRequest, context }),
-        );
+        json(response, 200, await refinePrompt(refineRequest));
         return;
       }
       if (
@@ -68,9 +63,9 @@ export function startServer(options: {
         const result = await refinePrompt({
           prompt,
           mode: "auto",
-          context: await collectContext(
-            typeof body.cwd === "string" ? body.cwd : process.cwd(),
-          ),
+          ...(typeof body.cwd === "string"
+            ? { context: await collectContext(body.cwd) }
+            : {}),
           semantic: process.env.PROMPT_REFINER_SEMANTIC === "true",
         });
         json(

@@ -6,6 +6,7 @@ import type {
   NodePermission,
   ValidationIssue,
 } from "./types.js";
+import { isValidExecutorName } from "./extensions.js";
 
 const NODE_ID = /^[a-z][a-z0-9_-]{0,63}$/;
 const RESERVED_NODE_IDS = new Set(["__proto__", "constructor", "prototype"]);
@@ -34,7 +35,6 @@ const NODE_PERMISSIONS = new Set([
   "external",
   "destructive",
 ]);
-const EXECUTORS = new Set(["codex", "claude", "local"]);
 const OPERATIONS = new Set(["identity", "collect", "flatten", "dedupe"]);
 const GRAPH_FIELDS = new Set([
   "version",
@@ -293,7 +293,8 @@ function graphShapeIssues(value: unknown): ValidationIssue[] {
     }
     if (
       node.executor !== undefined &&
-      (typeof node.executor !== "string" || !EXECUTORS.has(node.executor))
+      (typeof node.executor !== "string" ||
+        !isValidExecutorName(node.executor))
     ) {
       issues.push({
         code: "INVALID_EXECUTOR",
@@ -427,7 +428,7 @@ function graphShapeIssues(value: unknown): ValidationIssue[] {
       }
       if (
         typeof policy.repairExecutor !== "string" ||
-        !EXECUTORS.has(policy.repairExecutor)
+        !isValidExecutorName(policy.repairExecutor)
       ) {
         issues.push({
           code: "INVALID_REPAIR_POLICY",

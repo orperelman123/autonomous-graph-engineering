@@ -3,6 +3,7 @@ import {
   compilePrompt,
   renderEffectivePrompt,
 } from "./compiler.js";
+import { assertEffectivePromptWithinBudget } from "./context-policy.js";
 import { redactSecrets } from "./security.js";
 import type { RefineRequest, RefinementResult } from "./types.js";
 
@@ -96,6 +97,13 @@ function includesEvery(expected: string[], candidate: string[]): boolean {
   return expected.every((item) => candidate.includes(item));
 }
 
+function sameStrings(expected: string[], candidate: string[]): boolean {
+  return (
+    expected.length === candidate.length &&
+    expected.every((item, index) => item === candidate[index])
+  );
+}
+
 function assertSemanticPreservation(
   draft: RefinementResult,
   projection: RefinementResult,
@@ -116,6 +124,9 @@ function assertSemanticPreservation(
     throw new Error("semantic refinement changed protected intent fields");
   }
   assertPermissionPreservation(draft, parsed);
+  if (!sameStrings(projection.brief.context, parsed.brief.context)) {
+    throw new Error("semantic refinement changed protected context");
+  }
   for (const [label, expected, candidate] of [
     ["requirements", draft.brief.requirements, parsed.brief.requirements],
     ["constraints", draft.brief.constraints, parsed.brief.constraints],
@@ -273,13 +284,12 @@ export async function refinePrompt(
       provider,
       createdAt: draft.createdAt,
     };
-    return {
-      ...protectedResult,
-      effectivePrompt: renderEffectivePrompt(
-        draft.brief.objective,
-        protectedResult,
-      ),
-    };
+    const effectivePrompt = renderEffectivePrompt(
+      draft.brief.objective,
+      protectedResult,
+    );
+    assertEffectivePromptWithinBudget(effectivePrompt);
+    return { ...protectedResult, effectivePrompt };
   } catch (error) {
     return {
       ...draft,

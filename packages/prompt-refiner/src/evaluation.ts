@@ -136,6 +136,35 @@ export const DEFAULT_EVALUATION_CASES: EvaluationCase[] = [
     mustContain: ["elevated_access"],
   },
   {
+    id: "root-cause-not-elevated",
+    prompt: "Investigate the root cause of the parser bug.",
+    expectedStatus: "ready",
+    expectedClassification: "investigation",
+    mustNotRequestPermissions: ["elevated_access"],
+  },
+  {
+    id: "admin-dashboard-not-elevated",
+    prompt: "Review the admin dashboard for accessibility issues.",
+    expectedStatus: "ready",
+    expectedClassification: "investigation",
+    mustNotRequestPermissions: ["elevated_access"],
+  },
+  {
+    id: "root-certificate-not-elevated",
+    prompt: "Audit root certificate handling without changing it.",
+    expectedStatus: "ready",
+    expectedClassification: "investigation",
+    mustNotRequestPermissions: ["elevated_access"],
+  },
+  {
+    id: "denied-elevated-access",
+    prompt:
+      "Audit the root cause. No elevated access is authorized or requested.",
+    expectedStatus: "ready",
+    expectedClassification: "investigation",
+    mustNotRequestPermissions: ["elevated_access"],
+  },
+  {
     id: "long-negative-constraint",
     prompt: "Update the parser only; never change the public API or add dependencies.",
     expectedStatus: "ready",

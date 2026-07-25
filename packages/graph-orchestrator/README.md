@@ -2,6 +2,11 @@
 
 Permission-safe graph planning, validation, execution, checkpoints, reconciliation, and grading.
 
+Programmatic consumers can register permission-capped executors and bounded
+artifact graders through `GraphExtensionRegistry`. See
+[`docs/extensions.md`](../../docs/extensions.md) for the contract, migration
+path, and trust boundary.
+
 ```ts
 import {
   planGraph,

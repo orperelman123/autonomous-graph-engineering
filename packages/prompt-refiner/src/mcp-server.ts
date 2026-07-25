@@ -43,6 +43,7 @@ const TOOLS = [
           enum: ["auto", "silent", "visible", "strict"],
         },
         semantic: { type: "boolean" },
+        cwd: { type: "string", minLength: 1 },
       },
       required: ["prompt"],
       additionalProperties: false,
@@ -111,7 +112,9 @@ async function handle(request: JsonRpcRequest): Promise<void> {
         ...(typeof args.semantic === "boolean"
           ? { semantic: args.semantic }
           : {}),
-        context: await collectContext(),
+        ...(typeof args.cwd === "string"
+          ? { context: await collectContext(args.cwd) }
+          : {}),
       });
       result(request.id, {
         content: [
