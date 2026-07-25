@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/orperelman123/autonomous-graph-engineering/main/schemas/github-release-gate-report.schema.json",
+  "title": "GraphVigil GitHub Release Gate Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "report",
+    "repository",
+    "candidate",
+    "permissions",
+    "phase",
+    "passed",
+    "decision",
+    "gates"
+  ],
+  "properties": {
+    "version": { "const": "1.0" },
+    "report": { "const": "github-release-gate" },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "branch", "commit", "tag"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["githubAccess", "methods", "mutationEndpoints"],
+      "properties": {
+        "githubAccess": { "const": "read_only" },
+        "methods": {
+          "type": "array",
+          "prefixItems": [{ "const": "GET" }],
+          "items": false,
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "mutationEndpoints": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "phase": {
+      "enum": [
+        "configuration_blocked",
+        "reference_blocked",
+        "ready_to_push",
+        "checks_failed",
+        "awaiting_checks",
+        "review_ready",
+        "tag_ready",
+        "tagged"
+      ]
+    },
+    "passed": { "type": "boolean" },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readyToPush", "readyToMerge", "readyToTag"],
+      "properties": {
+        "readyToPush": { "type": "boolean" },
+        "readyToMerge": { "type": "boolean" },
+        "readyToTag": { "type": "boolean" }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "repository-active" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "required-workflows-active" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "strict-status-checks" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "required-status-contexts" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "linear-history" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "conversation-resolution" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "force-push-disabled" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "npm-environment-protected" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "candidate-branch-ref" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "candidate-required-checks" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "default-branch-ref" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "id": { "const": "release-tag-ref" } },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "status", "summary"],
+        "properties": {
+          "id": {
+            "enum": [
+              "repository-active",
+              "required-workflows-active",
+              "strict-status-checks",
+              "required-status-contexts",
+              "linear-history",
+              "conversation-resolution",
+              "force-push-disabled",
+              "npm-environment-protected",
+              "candidate-branch-ref",
+              "candidate-required-checks",
+              "default-branch-ref",
+              "release-tag-ref"
+            ]
+          },
+          "category": { "enum": ["configuration", "candidate"] },
+          "status": { "enum": ["pass", "fail", "pending"] },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "missing": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+          },
+          "pending": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+          },
+          "failed": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        }
+      }
+    }
+  }
+}

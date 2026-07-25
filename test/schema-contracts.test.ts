@@ -14,6 +14,11 @@ import type { GraphRunCheckpoint } from "../packages/graph-orchestrator/src/type
 import { validateGraph } from "../packages/graph-orchestrator/src/validator.js";
 import { compilePrompt } from "../packages/prompt-refiner/src/compiler.js";
 import { runLiveBenchmark } from "../scripts/live-provider-benchmark-lib.mjs";
+import {
+  evaluateGithubReleaseGate,
+  requiredReleaseContexts,
+  requiredReleaseWorkflows,
+} from "../scripts/github-release-gate-lib.mjs";
 
 const execute = promisify(execFile);
 
@@ -256,6 +261,56 @@ test("host compatibility fixture and report satisfy their strict public schemas"
   const duplicateReport = structuredClone(report);
   duplicateReport.cases[4] = structuredClone(duplicateReport.cases[0]);
   assert.equal(validateReport(duplicateReport), false);
+});
+
+test("GitHub release-gate output satisfies its strict path-free schema", async () => {
+  const validate = await validator("github-release-gate-report.schema.json");
+  const candidateCommit = "a".repeat(40);
+  const report = evaluateGithubReleaseGate(
+    {
+      repository: {
+        nameWithOwner: "example/graphvigil",
+        defaultBranch: "main",
+        archived: false,
+      },
+      branchProtection: {
+        strict: true,
+        requiredContexts: requiredReleaseContexts,
+        linearHistory: true,
+        conversationResolution: true,
+        forcePushesAllowed: false,
+      },
+      workflows: requiredReleaseWorkflows.map((name) => ({
+        name,
+        state: "active",
+      })),
+      npmEnvironment: {
+        exists: true,
+        protectedBranchesOnly: true,
+        requiredReviewerCount: 1,
+      },
+      refs: {
+        candidateBranchCommit: null,
+        defaultBranchCommit: "b".repeat(40),
+        releaseTagCommit: null,
+      },
+      checkRuns: [],
+    },
+    {
+      repository: "example/graphvigil",
+      candidateBranch: "codex/release-v0.4.0",
+      candidateCommit,
+      version: "0.4.0",
+    },
+  );
+  assert.equal(
+    validate(report),
+    true,
+    JSON.stringify(validate.errors, null, 2),
+  );
+  const permissionDrift = structuredClone(report);
+  permissionDrift.permissions.mutationEndpoints.push("POST");
+  assert.equal(validate(permissionDrift), false);
 });
 
 test("live provider benchmark dry-run satisfies its strict public contracts", async () => {

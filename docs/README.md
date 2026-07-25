@@ -11,6 +11,7 @@
 | [Community graph templates](community-graph-templates.md) | Verify and contribute provenance-bound, read-only graph templates |
 | [Local dashboard](local-dashboard.md) | Inspect redacted run summaries through a loopback-only read surface |
 | [Host compatibility](compatibility.md) | Validate five host contracts without overstating live-version support |
+| [GitHub release gates](github-release-gates.md) | Audit branch protection, workflows, candidate checks, environments, and refs without changing GitHub |
 | [Security model](security-model.md) | Review trust boundaries, invariants, threats, and residual risks |
 | [External security provider](external-security-provider.md) | Configure the optional fail-closed authorization boundary |
 | [Evaluation](evaluation.md) | Understand test and evaluation coverage and its limits |

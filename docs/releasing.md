@@ -20,19 +20,24 @@ returned zero; every public artifact must be read back from its destination.
    npm pack --dry-run --workspace @autonomous-graph-engineering/graph-engineer
    ```
 
-4. Push the release candidate and require the complete Windows/Linux CI,
+4. Run the read-only [GitHub release-gate auditor](github-release-gates.md)
+   against the exact candidate. Resolve configuration drift before pushing;
+   `ready_to_push` confirms the configured controls without authorizing a push.
+5. Push the release candidate and require the complete Windows/Linux CI,
    package, launch-readiness, and CodeQL matrix to pass.
-5. Merge only the reviewed PR commit into the configured default branch.
-6. Verify the default-branch commit and its post-merge CI before tagging.
-7. Publish `prompt-refiner` before `graph-engineer`, because the graph package
+6. Rerun the auditor against the remote branch and require `review_ready`.
+   Merge only the reviewed PR commit into the configured default branch.
+7. Verify the default-branch commit and its post-merge CI, then require
+   `tag_ready` before tagging.
+8. Publish `prompt-refiner` before `graph-engineer`, because the graph package
    depends on the exact prompt-refiner version. Read both package versions back
    from the npm registry.
-8. Create the signed-off GitHub release from the verified default-branch commit
+9. Create the signed-off GitHub release from the verified default-branch commit
    and read back its tag, commit, notes, and assets.
-9. Verify repository-hosted Claude Code and GitHub Copilot marketplaces with a
+10. Verify repository-hosted Claude Code and GitHub Copilot marketplaces with a
    clean install. Cursor Marketplace publication additionally requires its
    publisher application and terms.
-10. Publish benchmark results only with the protocol, raw results, limitations,
+11. Publish benchmark results only with the protocol, raw results, limitations,
     model identifiers, repetitions, token usage, and cost accounting.
 
 ## npm trusted publishing

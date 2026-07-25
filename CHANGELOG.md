@@ -4,6 +4,10 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Add a deterministic GET-only GitHub release-gate auditor with strict,
+  path-free reports for branch protection, workflow, npm-environment,
+  candidate-ref, check-run, merge, and tag drift.
+
 ## 0.4.0 - 2026-07-25
 
 - Keep a verified Windows plugin activation successful when a running host

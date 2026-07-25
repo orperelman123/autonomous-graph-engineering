@@ -70,6 +70,7 @@ a host or provider:
 
 ```bash
 npm run compatibility
+npm run release-gate -- --help
 ```
 
 The report distinguishes deterministic contract evidence from separately
@@ -251,7 +252,7 @@ Review [SECURITY.md](SECURITY.md) before using write, external, or destructive p
 
 ## Project status
 
-The current suite contains 170 unit, interface, integration, launch-readiness,
+The current suite contains 178 unit, interface, integration, launch-readiness,
 and schema-contract tests, 21 adversarial graph evaluations, 34
 prompt-refinement evaluations, and a two-case repository semantic corpus. The
 checks are deterministic by default and do not require provider credentials.
