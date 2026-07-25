@@ -1,6 +1,6 @@
 {
   "name": "autonomous-graph-engineering",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "private": true,
   "description": "GraphVigil: permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, GitHub Copilot, and Hermes Agent.",
   "license": "MIT",

@@ -22,7 +22,7 @@
   },
   "compatibility": {
     "graphSchemaVersion": "1.0",
-    "graphvigilVersion": "0.3.3",
+    "graphvigilVersion": "0.4.0",
     "hosts": [
       {
         "id": "codex",

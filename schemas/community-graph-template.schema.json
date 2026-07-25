@@ -89,7 +89,7 @@
         "graphSchemaVersion": { "const": "1.0" },
         "graphvigilVersion": {
           "type": "string",
-          "pattern": "^0\\.3\\.3$"
+          "pattern": "^0\\.4\\.0$"
         },
         "hosts": {
           "type": "array",

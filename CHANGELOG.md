@@ -4,6 +4,8 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 0.4.0 - 2026-07-25
+
 - Keep a verified Windows plugin activation successful when a running host
   locks the previous Atbash native module, retain the exact backup with clear
   stale-runtime remediation, and clean unlocked backups on a later bounded

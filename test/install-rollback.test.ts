@@ -227,11 +227,11 @@ test("clean local adapter bundle starts both installed MCP servers", async () =>
     );
     assert.match(
       verification.stdout,
-      /prompt-refiner: verified 3 tools and current runtime 0\.3\.3/,
+      /prompt-refiner: verified 3 tools and current runtime 0\.4\.0/,
     );
     assert.match(
       verification.stdout,
-      /graph-engineer: verified 7 tools and current runtime 0\.3\.3/,
+      /graph-engineer: verified 7 tools and current runtime 0\.4\.0/,
     );
     for (const file of [
       ".cursor-plugin/plugin.json",
