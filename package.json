@@ -2,7 +2,7 @@
   "name": "autonomous-graph-engineering",
   "version": "0.3.3",
   "private": true,
-  "description": "GraphVigil: permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, and GitHub Copilot.",
+  "description": "GraphVigil: permission-safe prompt refinement and autonomous graph orchestration for Codex, Claude Code, Cursor, GitHub Copilot, and Hermes Agent.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -19,6 +19,7 @@
     "install:local": "node scripts/install.mjs",
     "install:cursor": "node scripts/install.mjs --platform cursor",
     "install:copilot": "node scripts/install.mjs --platform copilot",
+    "install:hermes": "node scripts/install.mjs --platform hermes",
     "verify:install": "node scripts/verify-install.mjs",
     "predoctor": "npm run build",
     "doctor": "node scripts/doctor.mjs",

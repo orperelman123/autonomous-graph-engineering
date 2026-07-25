@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["version", "status", "root", "pluginDirectory", "checks", "hosts", "summary"],
   "properties": {
-    "version": { "const": "1.1" },
+    "version": { "const": "1.2" },
     "status": { "enum": ["ready", "blocked"] },
     "root": { "type": "string", "minLength": 1 },
     "pluginDirectory": { "type": "string", "minLength": 1 },
@@ -28,14 +28,14 @@
     },
     "hosts": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 5,
+      "maxItems": 5,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["host", "command", "available", "authentication", "mcpRegistration", "detail"],
         "properties": {
-          "host": { "enum": ["codex", "claude", "cursor", "copilot"] },
+          "host": { "enum": ["codex", "claude", "cursor", "copilot", "hermes"] },
           "command": { "type": "string", "minLength": 1 },
           "available": { "type": "boolean" },
           "authentication": { "enum": ["verified", "missing", "unknown"] },

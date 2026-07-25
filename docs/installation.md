@@ -1,9 +1,9 @@
 # Installation
 
 The repository supports three layers: standalone CLIs, MCP servers, and shared
-plugin assets for Codex, Claude Code, Cursor, and GitHub Copilot. Start with the
-local installer because it builds the TypeScript packages and gives MCP servers
-absolute runtime paths.
+plugin assets for Codex, Claude Code, Cursor, GitHub Copilot, and Hermes Agent.
+Start with the local installer because it builds the TypeScript packages and
+gives MCP servers absolute runtime paths.
 
 ## Requirements
 
@@ -210,6 +210,101 @@ References: [creating Copilot CLI plugins](https://docs.github.com/en/copilot/ho
 [Copilot hooks](https://docs.github.com/en/copilot/reference/hooks-reference),
 and [agent skills](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills).
 
+## Hermes Agent
+
+Hermes natively supports local stdio MCP servers and agentskills-compatible
+external skill directories. Prepare a transactionally verified bundle:
+
+```bash
+npm run install:hermes
+npm run verify:install -- --plugin-dir ~/.hermes/graphvigil/prompt-refiner
+```
+
+The default target is `~/.hermes/graphvigil/prompt-refiner`. The installer does
+not overwrite `~/.hermes/config.yaml`; it emits `hermes.config.yaml` inside the
+installed bundle. Review that credential-free fragment, append its
+`skills.external_dirs` entry, and add its two `mcp_servers` entries without
+replacing unrelated existing settings. The fragment:
+
+- adds the installed `skills/` directory through `skills.external_dirs`;
+- enables `skills.write_approval` so Hermes stages agent-authored skill changes
+  for explicit human review;
+- registers `prompt-refiner` and `graph-engineer` as local stdio MCP servers
+  using absolute installed paths;
+- preserves the shared non-secret installation identity;
+- keeps MCP resource and prompt utility wrappers disabled because GraphVigil
+  exposes tools only;
+- leaves the optional Atbash provider disabled unless the installer is run
+  with the separately documented flags.
+
+To use the official Atbash SDK for Hermes executor authorization, prepare the
+bundle with explicit activation:
+
+```bash
+npm run install:hermes -- --with-atbash --enable-atbash
+npm run verify:install -- \
+  --plugin-dir ~/.hermes/graphvigil/prompt-refiner \
+  --expect-atbash
+```
+
+This adds the exactly pinned external SDK to the installed bundle and sets
+`GRAPH_ENGINEER_SECURITY_PROVIDER: "atbash"` for the Hermes graph-engineer MCP
+server. It does not write credentials into the generated config. Atbash must
+already be onboarded through private environment configuration; missing or
+invalid configuration remains fail-closed.
+
+After merging the fragment, start a new Hermes session or run `/reload-mcp`,
+then verify:
+
+```bash
+hermes mcp test prompt-refiner
+hermes mcp test graph-engineer
+hermes skills list
+```
+
+In a new chat, `/improve-prompt` and `/engineer-graph` load the same bounded
+skills used by the other hosts. Call `get_runtime_info` through both MCP
+servers and require `status: "current"` before graph execution.
+
+### Always review prompts in Hermes
+
+Hermes automatically loads one project context type in priority order:
+`.hermes.md`, `AGENTS.md`, `CLAUDE.md`, then `.cursorrules`. This repository's
+root `AGENTS.md` already tells compatible hosts to refine intent before
+substantive work. For another Hermes workspace, add the following to its active
+`.hermes.md` or `AGENTS.md`:
+
+```markdown
+## Prompt refinement
+
+Always review my prompt before substantive work. Preserve the original request,
+constraints, and permissions. Use GraphVigil's `refine_prompt` MCP tool when it
+is available, then execute from the resulting compact brief. Ask one
+clarification only when different answers materially change the result. Never
+expand permissions or infer credentials, destructive actions, publication, or
+external side effects. Treat a prompt beginning with `!raw` as an explicit
+one-turn bypass.
+```
+
+Start Hermes from that workspace so the context file is loaded. If both
+`.hermes.md` and `AGENTS.md` exist, put the instruction in `.hermes.md` because
+Hermes loads only the first supported project context type.
+
+Hermes treats configured external skill directories as agent-manageable when
+the process has filesystem write access. They are not a write-protection
+boundary. The generated fragment therefore sets `skills.write_approval: true`;
+never approve a skill change without reviewing its staged diff. Rerun `npm run
+install:hermes` plus `npm run verify:install` to restore the verified bundle if
+an approved Hermes workflow intentionally edits one of these installed skills.
+
+This is a repository-local host adapter, not a Hermes catalog, Skills Hub, or
+marketplace submission. Those are separate publication actions.
+
+References: [Hermes MCP](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp),
+[MCP configuration](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference),
+[external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills#external-skill-directories),
+and [context files](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files).
+
 ## Verify the installation
 
 ```bash
@@ -223,6 +318,8 @@ claude mcp list
 cursor-agent status
 cursor-agent mcp list
 copilot plugin list
+hermes mcp list
+hermes skills list
 ```
 
 For a safe first execution:
@@ -251,12 +348,13 @@ Re-register an MCP server only if its installed path or name changes. A normal
 upgrade still requires a host reload, which `get_runtime_info` verifies without
 guessing from the files on disk.
 
-For Cursor or Copilot, rerun the corresponding installer so activation remains
-rollback-safe:
+For Cursor, Copilot, or Hermes, rerun the corresponding installer so activation
+remains rollback-safe:
 
 ```bash
 npm run install:cursor
 npm run install:copilot
+npm run install:hermes
 ```
 
 ## Uninstalling

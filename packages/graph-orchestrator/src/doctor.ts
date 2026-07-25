@@ -13,7 +13,7 @@ export interface DoctorCheck {
 }
 
 export interface DoctorReport {
-  version: "1.1";
+  version: "1.2";
   status: "ready" | "blocked";
   root: string;
   pluginDirectory: string;
@@ -26,7 +26,12 @@ export interface DoctorReport {
   };
 }
 
-export type HostName = "codex" | "claude" | "cursor" | "copilot";
+export type HostName =
+  | "codex"
+  | "claude"
+  | "cursor"
+  | "copilot"
+  | "hermes";
 export type DiagnosticSignal = "verified" | "missing" | "unknown";
 
 export interface HostDiagnostic {
@@ -240,6 +245,7 @@ export async function runDoctor(
     ["claude", "claude"],
     ["cursor", "cursor-agent"],
     ["copilot", "copilot"],
+    ["hermes", "hermes"],
   ];
   const hosts: HostDiagnostic[] = [];
   for (const [host, command] of hostCommands) {
@@ -295,7 +301,7 @@ export async function runDoctor(
   );
   const warnings = checks.filter((item) => !item.required && !item.passed);
   return {
-    version: "1.1",
+    version: "1.2",
     status: requiredFailures.length === 0 ? "ready" : "blocked",
     root,
     pluginDirectory,

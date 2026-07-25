@@ -8,6 +8,10 @@ import {
   atomicReplaceDirectory,
   withInstallLock,
 } from "./install-lib.mjs";
+import {
+  createHermesConfiguration,
+  renderHermesConfiguration,
+} from "./hermes-config-lib.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedIndex = process.argv.indexOf("--plugin-dir");
@@ -22,14 +26,16 @@ const enableAtbash = process.argv.includes("--enable-atbash");
 if (enableAtbash && !withAtbash) {
   throw new Error("--enable-atbash requires --with-atbash");
 }
-if (!["codex-claude", "cursor", "copilot"].includes(platform)) {
-  throw new Error("platform must be codex-claude, cursor, or copilot");
+if (!["codex-claude", "cursor", "copilot", "hermes"].includes(platform)) {
+  throw new Error("platform must be codex-claude, cursor, copilot, or hermes");
 }
 const platformDefault =
   platform === "cursor"
     ? join(homedir(), ".cursor", "plugins", "local", "prompt-refiner")
     : platform === "copilot"
       ? join(homedir(), ".copilot", "plugins", "local", "prompt-refiner")
+      : platform === "hermes"
+        ? join(homedir(), ".hermes", "graphvigil", "prompt-refiner")
       : join(homedir(), "plugins", "prompt-refiner");
 const pluginTarget = resolve(
   requested ?? platformDefault,
@@ -185,6 +191,18 @@ await withInstallLock(pluginTarget, async () => {
         "utf8",
       );
     }
+    if (platform === "hermes") {
+      const hermesConfiguration = createHermesConfiguration({
+        pluginTarget,
+        runtimeIdentity,
+        enableAtbash,
+      });
+      await writeFile(
+        join(temporary, "hermes.config.yaml"),
+        renderHermesConfiguration(hermesConfiguration),
+        "utf8",
+      );
+    }
     await atomicReplaceDirectory({
       staged: temporary,
       target: pluginTarget,
@@ -194,6 +212,9 @@ await withInstallLock(pluginTarget, async () => {
           join(installed, "install-manifest.json"),
           join(installed, "runtime", "mcp-server.js"),
           join(installed, "graph-runtime", "mcp-server.js"),
+          ...(platform === "hermes"
+            ? [join(installed, "hermes.config.yaml")]
+            : []),
         ]) {
           await readFile(required);
         }
@@ -216,5 +237,8 @@ await withInstallLock(pluginTarget, async () => {
 process.stdout.write(
   `${skipGlobal ? "Installed plugin bundle" : "Installed CLIs and plugin bundle"} at ${pluginTarget}.\n` +
   `Prepared the ${platform} adapter${withAtbash ? " with the official Atbash SDK" : ""}${enableAtbash ? " enabled" : ""}. See docs/installation.md for host registration and verification.\n` +
+  (platform === "hermes"
+    ? `Merge ${join(pluginTarget, "hermes.config.yaml")} into ~/.hermes/config.yaml, then use /reload-mcp or start a new Hermes session.\n`
+    : "") +
   "Reload each active host, then call get_runtime_info; status=current confirms the new installation is active.\n",
 );
