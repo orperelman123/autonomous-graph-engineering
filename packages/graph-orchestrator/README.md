@@ -8,10 +8,11 @@ An explicit `human_gate` checkpoints the run and waits for its exact
 fingerprint-bound approval token. A non-side-effecting node failure is
 branch-scoped: the runtime marks that node failed, skips only its transitive
 dependents, and finishes independent DAG branches before returning the
-compatible terminal status `failed`. Token exhaustion, the graph deadline,
-repair-budget exhaustion, and any ambiguous side-effecting failure remain
-graph-scoped and stop the run. Portable reports expose this distinction as
-`failureScope: "branch" | "graph"`.
+compatible terminal status `failed`. Token exhaustion, the graph deadline, and
+any ambiguous side-effecting failure remain graph-scoped and stop the run.
+Exhausted repair acceptance is a separate run-level terminal failure and does
+not add a node `failureScope`. Portable reports expose node failure scope as
+`"branch" | "graph"`.
 
 Hermes Agent uses this same Graph Engineer MCP runtime, so these scheduling
 semantics are identical there. Hermes skill-write approval is a separate host

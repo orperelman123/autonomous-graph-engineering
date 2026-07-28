@@ -95,7 +95,8 @@
               "type": {
                 "enum": [
                   "run_started", "run_resumed", "run_completed", "run_failed", "run_blocked",
-                  "node_started", "node_completed", "node_failed", "node_blocked", "node_reconciled",
+                  "node_started", "node_completed", "node_failed", "node_blocked", "node_skipped",
+                  "node_reconciled",
                   "repair_started", "repair_completed"
                 ]
               },

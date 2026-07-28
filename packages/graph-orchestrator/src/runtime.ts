@@ -103,6 +103,12 @@ class UsageBudgetExceededError extends Error {}
 
 class BranchFailuresError extends Error {}
 
+class GraphDeadlineExceededError extends Error {
+  constructor() {
+    super("graph execution timed out");
+  }
+}
+
 function usageExceedsBudget(graph: GraphSpec, usage: TokenUsage): boolean {
   const consumed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
   const budget =
@@ -258,7 +264,7 @@ function failureScope(
   if (
     error instanceof UsageBudgetExceededError ||
     error instanceof ExecutorTimeoutError ||
-    /graph execution timed out/i.test((error as Error).message)
+    error instanceof GraphDeadlineExceededError
   ) {
     return "graph";
   }
@@ -680,7 +686,9 @@ export async function runGraph(
           await saveCheckpoint("running");
           try {
             const remainingMs = deadline - Date.now();
-            if (remainingMs <= 0) throw new Error("graph execution timed out");
+            if (remainingMs <= 0) {
+              throw new GraphDeadlineExceededError();
+            }
             const execution = await executeNode(
               graph,
               node,
@@ -769,13 +777,19 @@ export async function runGraph(
       );
       batch.forEach((nodeId) => pending.delete(nodeId));
       const globalFailure = outcomes.find(
-        (outcome) =>
+        (
+          outcome,
+        ): outcome is {
+          nodeId: string;
+          error: unknown;
+          failureScope: "graph";
+        } =>
           "error" in outcome &&
-          outcome.error &&
+          outcome.error !== undefined &&
           "failureScope" in outcome &&
           outcome.failureScope === "graph",
       );
-      if (globalFailure?.error) throw globalFailure.error;
+      if (globalFailure) throw globalFailure.error;
       await skipFailedDescendants();
       const gate = outcomes.find(
         (
@@ -832,7 +846,7 @@ export async function runGraph(
         repairRounds < graph.budgets.maxRepairRounds
       ) {
         const remainingMs = deadline - Date.now();
-        if (remainingMs <= 0) throw new Error("graph execution timed out");
+        if (remainingMs <= 0) throw new GraphDeadlineExceededError();
         repairRounds += 1;
         await store.append(
           {

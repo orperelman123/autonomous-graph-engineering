@@ -41,16 +41,25 @@ Hermes Agent uses the same Graph Engineer MCP runtime and therefore receives the
 same scheduler semantics. Its skill-write approval remains a separate host
 control and is not treated as a graph gate.
 
-## Repair rounds and acceptance
+## Test construction, review repair, and acceptance
 
 The additional side-effect adversarial test initially assumed an independent
 node could not already have completed before a graph-scoped write failure.
-Repair round 1 corrected the invariant to future scheduling, not rollback.
-The next run exposed the validator's deterministic lexicographic topological
-order. Repair round 2 made the intended ordering explicit through node IDs.
+The first test-construction iteration corrected the invariant to future
+scheduling, not rollback. The next iteration exposed the validator's
+deterministic lexicographic topological order and made the intended ordering
+explicit through node IDs.
 The resulting test proves that an approved side-effect failure is graph-scoped,
 does not manufacture a gate, and leaves later independent work pending. No
-product behavior was changed during either test-only repair.
+product behavior was changed during either test-only iteration.
+
+Independent PR review then found four valid issues in one consolidated product
+repair round: the portable-report event enum omitted `node_skipped`, deadline
+scope depended on matching an error message, repair exhaustion was described as
+a node-scoped failure instead of a run-level terminal failure, and the
+graph-failure lookup lacked an explicit TypeScript predicate. The repair adds a
+schema regression containing a real `node_skipped` event, a dedicated deadline
+error, precise documentation, and type-safe outcome narrowing.
 
 The exact final source passed:
 

@@ -59,10 +59,11 @@ downstream executor honoring the idempotency key.
 Failure scope is explicit in checkpoints and portable reports. Read-only or
 deterministic node failures are `branch` scoped: descendants are skipped while
 independent branches continue, and the run ultimately reports `failed`.
-Global token exhaustion, the graph-wide deadline, exhausted repair acceptance,
-and ambiguous side-effecting failures are `graph` scoped and stop scheduling.
-Only an explicit `human_gate` produces `needs_confirmation`; a ceiling never
-manufactures a gate or expands authority.
+Global token exhaustion, the graph-wide deadline, and ambiguous side-effecting
+failures are `graph` scoped and stop scheduling. Exhausted repair acceptance is
+a separate run-level terminal failure after node scheduling; it does not add a
+node `failureScope`. Only an explicit `human_gate` produces
+`needs_confirmation`; a ceiling never manufactures a gate or expands authority.
 
 This contract is host-independent. Hermes Agent invokes the same Graph Engineer
 MCP runtime, while its separate skill-write approval controls staged skill
