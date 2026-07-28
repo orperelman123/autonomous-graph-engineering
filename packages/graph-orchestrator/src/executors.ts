@@ -77,9 +77,10 @@ function claudeArgs(request: AgentExecutionRequest): string[] {
 
 const WINDOWS_CLEANUP_COMMAND_TIMEOUT_MS = 5_000;
 
-async function runWindowsCleanupCommand(
+export async function runWindowsCleanupCommand(
   command: string,
   args: string[],
+  timeoutMs = WINDOWS_CLEANUP_COMMAND_TIMEOUT_MS,
 ): Promise<number | null> {
   return await new Promise((resolveCleanup) => {
     const cleanup = spawn(command, args, {
@@ -99,7 +100,7 @@ async function runWindowsCleanupCommand(
     deadline = setTimeout(() => {
       cleanup.kill();
       finish(null);
-    }, WINDOWS_CLEANUP_COMMAND_TIMEOUT_MS);
+    }, timeoutMs);
   });
 }
 

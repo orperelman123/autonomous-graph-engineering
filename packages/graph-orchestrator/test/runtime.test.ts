@@ -9,6 +9,7 @@ import {
   LocalEchoExecutor,
   parseClaudeEnvelope,
   parseCodexJsonl,
+  runWindowsCleanupCommand,
 } from "../src/executors.js";
 import { gradeCheckpoint } from "../src/grader.js";
 import { loadCheckpoint } from "../src/persistence.js";
@@ -62,6 +63,21 @@ async function waitForDescendantPid(
     { cause: lastError },
   );
 }
+
+test("bounds an unresponsive process-tree cleanup helper", async () => {
+  const startedAt = Date.now();
+  const code = await runWindowsCleanupCommand(
+    process.execPath,
+    ["-e", "setInterval(() => {}, 1_000)"],
+    50,
+  );
+
+  assert.equal(code, null);
+  assert.ok(
+    Date.now() - startedAt < 15_000,
+    "cleanup helper exceeded its 15-second bounded test deadline",
+  );
+});
 
 test("executes a read-only graph and writes a replayable JSONL audit", async () => {
   const directory = await mkdtemp(join(tmpdir(), "graph-runtime-"));

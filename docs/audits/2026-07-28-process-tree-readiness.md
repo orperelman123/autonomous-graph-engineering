@@ -42,7 +42,9 @@ and 60 seconds). Source inspection identified the product-level cause:
 round 2 bounds each helper at five seconds and makes fallback descendant
 discovery query only the active process tree. If neither helper proves cleanup,
 the executor kills the direct child and reports a cleanup failure instead of
-remaining mid-run indefinitely.
+remaining mid-run indefinitely. A platform-neutral regression launches an
+intentionally unresponsive helper through the same internal function and
+proves the deadline path returns `null` rather than waiting for process exit.
 
 No unconditional sleep, test skip, graph budget change, permission change,
 gate approval, provider call, or proprietary Atbash source is introduced.
@@ -61,14 +63,14 @@ dirty worktree fingerprints throughout.
 - Windows focused policy regressions: `5/5` passed.
 - Windows timeout stress after repair round 2: three trials, `2/2` passed in
   each trial.
-- Windows complete `npm run check`: exit `0`; graph package `70/70`, Prompt
+- Windows complete `npm run check`: exit `0`; graph package `71/71`, Prompt
   Refiner `28/28`, and repository contracts passed.
 - Windows secret/private-path and link checks: passed.
 - Windows offline provider-envelope compatibility: passed without network.
 - Windows package dry-runs: both packages passed; nothing published.
 - Windows dependency audit: `0` vulnerabilities.
 - Isolated Ubuntu 22 / Node 22 complete gate:
-  `/tmp/graphvigil-readiness.NY8zVW`, exit `0`; full check, scans, offline
+  `/tmp/graphvigil-readiness.9hlFSy`, exit `0`; full check, scans, offline
   compatibility, both package dry-runs, and dependency audit passed.
 
 The first Ubuntu isolation attempt excluded Git metadata and therefore failed
