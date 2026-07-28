@@ -63,20 +63,27 @@ dirty worktree fingerprints throughout.
 - Windows focused policy regressions: `5/5` passed.
 - Windows timeout stress after repair round 2: three trials, `2/2` passed in
   each trial.
-- Windows complete `npm run check`: exit `0`; graph package `71/71`, Prompt
+- Windows complete `npm run check`: exit `0`; graph package `72/72`, Prompt
   Refiner `28/28`, and repository contracts passed.
 - Windows secret/private-path and link checks: passed.
 - Windows offline provider-envelope compatibility: passed without network.
 - Windows package dry-runs: both packages passed; nothing published.
 - Windows dependency audit: `0` vulnerabilities.
 - Isolated Ubuntu 22 / Node 22 complete gate:
-  `/tmp/graphvigil-readiness.9hlFSy`, exit `0`; full check, scans, offline
+  `/tmp/graphvigil-readiness.V2Hgmh`, exit `0`; full check, scans, offline
   compatibility, both package dry-runs, and dependency audit passed.
 
 The first Ubuntu isolation attempt excluded Git metadata and therefore failed
 only the readiness test that invokes `git ls-files`; the corrected isolated
 repository initialized a temporary Git index and passed `41/41` repository
 contracts. No production code changed for that harness correction.
+
+CodeRabbit identified one actionable readiness-test issue: a PID file can exist
+briefly with empty or partial content. The poll now treats an invalid parsed PID
+as not-yet-ready until the existing deadline, while still propagating
+non-`ENOENT` filesystem errors immediately. A deterministic partial-write
+regression covers the correction, and the complete Windows and Ubuntu gates
+above were rerun afterward.
 
 The original worktree remained on
 `c9b42f46bc89fe21b3e0ac6d19cd5603836a85e3`, with `origin/main` at

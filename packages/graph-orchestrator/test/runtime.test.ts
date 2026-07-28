@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -42,9 +42,10 @@ async function waitForDescendantPid(
     try {
       const pid = Number(await readFile(pidPath, "utf8"));
       if (!Number.isSafeInteger(pid) || pid <= 0) {
-        throw new Error(`invalid descendant PID in ${pidPath}`);
+        lastError = new Error(`invalid descendant PID in ${pidPath}`);
+      } else {
+        return pid;
       }
-      return pid;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       lastError = error;
@@ -63,6 +64,28 @@ async function waitForDescendantPid(
     { cause: lastError },
   );
 }
+
+test("retries a partially written descendant PID until readiness", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-pid-readiness-"));
+  const pidPath = join(directory, "descendant.pid");
+  try {
+    await writeFile(pidPath, "", "utf8");
+    const finishWrite = new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        void writeFile(pidPath, String(process.pid), "utf8").then(
+          () => resolve(),
+          reject,
+        );
+      }, 50);
+    });
+
+    const pid = await waitForDescendantPid(pidPath, 1_000, () => undefined);
+    await finishWrite;
+    assert.equal(pid, process.pid);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("bounds an unresponsive process-tree cleanup helper", async () => {
   const startedAt = Date.now();
