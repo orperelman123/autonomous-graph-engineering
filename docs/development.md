@@ -109,6 +109,18 @@ Treat these as safety-critical:
 Every fix needs a crash, timeout, resume, or budget regression test matching the
 failure mode.
 
+Timeout tests must prove fixture readiness before asserting descendant cleanup.
+Model delayed and absent descendant startup explicitly, keep readiness and
+cleanup deadlines bounded, and use bounded recursive-removal retries on
+Windows. These test-harness controls are host-neutral: Codex, Claude, local,
+and Hermes integrations share the same executor timeout semantics and do not
+turn a timeout into an implicit human gate. Windows process-tree helper
+commands are individually bounded: if both cleanup paths fail or exceed their
+ceilings, the executor fails closed instead of waiting indefinitely. The
+runtime then applies the graph's existing failure scope—a read-only branch can
+fail locally, while graph-wide ceilings and consequential uncertainty stop the
+run.
+
 ### Host plugin changes
 
 Shared source lives under `plugins/prompt-refiner/`. Keep Codex, Claude Code,

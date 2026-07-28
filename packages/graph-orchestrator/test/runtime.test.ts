@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   LocalEchoExecutor,
   parseClaudeEnvelope,
   parseCodexJsonl,
+  runWindowsCleanupCommand,
 } from "../src/executors.js";
 import { gradeCheckpoint } from "../src/grader.js";
 import { loadCheckpoint } from "../src/persistence.js";
@@ -29,6 +30,77 @@ import type {
   GraphExecutor,
   GraphRunCheckpoint,
 } from "../src/types.js";
+
+async function waitForDescendantPid(
+  pidPath: string,
+  timeoutMs: number,
+  executionFailure: () => Error | undefined,
+): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const pid = Number(await readFile(pidPath, "utf8"));
+      if (!Number.isSafeInteger(pid) || pid <= 0) {
+        lastError = new Error(`invalid descendant PID in ${pidPath}`);
+      } else {
+        return pid;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      lastError = error;
+    }
+    const failure = executionFailure();
+    if (failure) {
+      throw new Error(
+        `executor failed before descendant readiness: ${failure.message}`,
+        { cause: failure },
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(
+    `descendant readiness file was not created within ${timeoutMs}ms: ${pidPath}`,
+    { cause: lastError },
+  );
+}
+
+test("retries a partially written descendant PID until readiness", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-pid-readiness-"));
+  const pidPath = join(directory, "descendant.pid");
+  try {
+    await writeFile(pidPath, "", "utf8");
+    const finishWrite = new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        void writeFile(pidPath, String(process.pid), "utf8").then(
+          () => resolve(),
+          reject,
+        );
+      }, 50);
+    });
+
+    const pid = await waitForDescendantPid(pidPath, 1_000, () => undefined);
+    await finishWrite;
+    assert.equal(pid, process.pid);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bounds an unresponsive process-tree cleanup helper", async () => {
+  const startedAt = Date.now();
+  const code = await runWindowsCleanupCommand(
+    process.execPath,
+    ["-e", "setInterval(() => {}, 1_000)"],
+    50,
+  );
+
+  assert.equal(code, null);
+  assert.ok(
+    Date.now() - startedAt < 15_000,
+    "cleanup helper exceeded its 15-second bounded test deadline",
+  );
+});
 
 test("executes a read-only graph and writes a replayable JSONL audit", async () => {
   const directory = await mkdtemp(join(tmpdir(), "graph-runtime-"));
@@ -259,30 +331,45 @@ test("enforces the candidate schema after repair", async () => {
   }
 });
 
-test("timeout terminates the complete executor process tree", async () => {
+test("timeout terminates the complete executor process tree after readiness", async () => {
   const directory = await mkdtemp(join(tmpdir(), "graph-timeout-"));
   const pidPath = join(directory, "descendant.pid");
   const previousExecutable = process.env.CODEX_EXECUTABLE;
   const previousPidPath = process.env.GRAPH_TEST_CHILD_PID_FILE;
+  const previousStartupDelay =
+    process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS;
+  const previousSkipStartup =
+    process.env.GRAPH_TEST_SKIP_CHILD_STARTUP;
   process.env.CODEX_EXECUTABLE = fileURLToPath(
     new URL("./fixtures/hanging-process.js", import.meta.url),
   );
   process.env.GRAPH_TEST_CHILD_PID_FILE = pidPath;
+  process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS = "100";
+  process.env.GRAPH_TEST_SKIP_CHILD_STARTUP = "0";
   try {
+    let executionFailure: Error | undefined;
+    const execution = new CodexCliExecutor().execute({
+      runId: "timeout-test",
+      nodeId: "hang",
+      label: "Hang",
+      prompt: "Hang",
+      permission: "read",
+      input: {},
+      cwd: directory,
+      timeoutMs: 4_000,
+    });
+    void execution.catch((error: Error) => {
+      executionFailure = error;
+    });
+    const descendantPid = await waitForDescendantPid(
+      pidPath,
+      3_000,
+      () => executionFailure,
+    );
     await assert.rejects(
-      new CodexCliExecutor().execute({
-        runId: "timeout-test",
-        nodeId: "hang",
-        label: "Hang",
-        prompt: "Hang",
-        permission: "read",
-        input: {},
-        cwd: directory,
-        timeoutMs: 150,
-      }),
+      execution,
       /timed out/,
     );
-    const descendantPid = Number(await readFile(pidPath, "utf8"));
     let alive = true;
     for (let attempt = 0; attempt < 20 && alive; attempt += 1) {
       try {
@@ -301,7 +388,91 @@ test("timeout terminates the complete executor process tree", async () => {
     } else {
       process.env.GRAPH_TEST_CHILD_PID_FILE = previousPidPath;
     }
-    await rm(directory, { recursive: true, force: true });
+    if (previousStartupDelay === undefined) {
+      delete process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS;
+    } else {
+      process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS =
+        previousStartupDelay;
+    }
+    if (previousSkipStartup === undefined) {
+      delete process.env.GRAPH_TEST_SKIP_CHILD_STARTUP;
+    } else {
+      process.env.GRAPH_TEST_SKIP_CHILD_STARTUP =
+        previousSkipStartup;
+    }
+    await rm(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 50,
+    });
+  }
+});
+
+test("timeout before descendant readiness is bounded and leaves no PID artifact", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-timeout-unready-"));
+  const pidPath = join(directory, "descendant.pid");
+  const previousExecutable = process.env.CODEX_EXECUTABLE;
+  const previousPidPath = process.env.GRAPH_TEST_CHILD_PID_FILE;
+  const previousStartupDelay =
+    process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS;
+  const previousSkipStartup =
+    process.env.GRAPH_TEST_SKIP_CHILD_STARTUP;
+  process.env.CODEX_EXECUTABLE = fileURLToPath(
+    new URL("./fixtures/hanging-process.js", import.meta.url),
+  );
+  process.env.GRAPH_TEST_CHILD_PID_FILE = pidPath;
+  process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS = "0";
+  process.env.GRAPH_TEST_SKIP_CHILD_STARTUP = "1";
+  const startedAt = Date.now();
+  try {
+    await assert.rejects(
+      new CodexCliExecutor().execute({
+        runId: "timeout-before-readiness-test",
+        nodeId: "hang-before-readiness",
+        label: "Hang before readiness",
+        prompt: "Hang before readiness",
+        permission: "read",
+        input: {},
+        cwd: directory,
+        timeoutMs: 50,
+      }),
+      /execution timed out/,
+    );
+    assert.ok(
+      Date.now() - startedAt < 15_000,
+      "timeout cleanup exceeded its 15-second bounded test deadline",
+    );
+    await assert.rejects(
+      readFile(pidPath, "utf8"),
+      (error: NodeJS.ErrnoException) => error.code === "ENOENT",
+    );
+  } finally {
+    if (previousExecutable === undefined) delete process.env.CODEX_EXECUTABLE;
+    else process.env.CODEX_EXECUTABLE = previousExecutable;
+    if (previousPidPath === undefined) {
+      delete process.env.GRAPH_TEST_CHILD_PID_FILE;
+    } else {
+      process.env.GRAPH_TEST_CHILD_PID_FILE = previousPidPath;
+    }
+    if (previousStartupDelay === undefined) {
+      delete process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS;
+    } else {
+      process.env.GRAPH_TEST_CHILD_STARTUP_DELAY_MS =
+        previousStartupDelay;
+    }
+    if (previousSkipStartup === undefined) {
+      delete process.env.GRAPH_TEST_SKIP_CHILD_STARTUP;
+    } else {
+      process.env.GRAPH_TEST_SKIP_CHILD_STARTUP =
+        previousSkipStartup;
+    }
+    await rm(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 50,
+    });
   }
 });
 

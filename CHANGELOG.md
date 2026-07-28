@@ -4,6 +4,8 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Bound Windows executor process-tree cleanup helpers and make timeout tests
+  readiness-aware under delayed or absent descendant startup.
 - Isolate failures in read-only and deterministic nodes to their dependency
   branches while preserving explicit human gates, graph-wide token and timeout
   ceilings, and fail-closed reconciliation for consequential operations.

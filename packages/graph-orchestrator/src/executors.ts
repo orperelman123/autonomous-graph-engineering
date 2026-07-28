@@ -75,6 +75,35 @@ function claudeArgs(request: AgentExecutionRequest): string[] {
   ];
 }
 
+const WINDOWS_CLEANUP_COMMAND_TIMEOUT_MS = 5_000;
+
+export async function runWindowsCleanupCommand(
+  command: string,
+  args: string[],
+  timeoutMs = WINDOWS_CLEANUP_COMMAND_TIMEOUT_MS,
+): Promise<number | null> {
+  return await new Promise((resolveCleanup) => {
+    const cleanup = spawn(command, args, {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+    let settled = false;
+    let deadline: NodeJS.Timeout | undefined;
+    const finish = (code: number | null): void => {
+      if (settled) return;
+      settled = true;
+      if (deadline) clearTimeout(deadline);
+      resolveCleanup(code);
+    };
+    cleanup.once("exit", (code) => finish(code));
+    cleanup.once("error", () => finish(null));
+    deadline = setTimeout(() => {
+      cleanup.kill();
+      finish(null);
+    }, timeoutMs);
+  });
+}
+
 async function spawnCapture(
   command: string,
   args: string[],
@@ -104,27 +133,19 @@ async function spawnCapture(
     const terminateTree = async (): Promise<void> => {
       if (!child.pid) return;
       if (process.platform === "win32") {
-        const taskkillCode = await new Promise<number | null>(
-          (resolveTermination) => {
-          const killer = spawn(
-            "taskkill.exe",
-            ["/PID", String(child.pid), "/T", "/F"],
-            { windowsHide: true, stdio: "ignore" },
-          );
-            killer.once("exit", (code) => resolveTermination(code));
-            killer.once("error", () => resolveTermination(null));
-          },
+        const taskkillCode = await runWindowsCleanupCommand(
+          "taskkill.exe",
+          ["/PID", String(child.pid), "/T", "/F"],
         );
         if (taskkillCode === 0) return;
         const script = [
           `$root = ${String(child.pid)}`,
-          "$all = @(Get-CimInstance Win32_Process)",
           "$ids = [System.Collections.Generic.List[int]]::new()",
           "$queue = [System.Collections.Generic.Queue[int]]::new()",
           "$queue.Enqueue($root)",
           "while ($queue.Count -gt 0) {",
           "  $parent = $queue.Dequeue()",
-          "  foreach ($p in @($all | Where-Object ParentProcessId -eq $parent)) {",
+          "  foreach ($p in @(Get-CimInstance Win32_Process -Filter \"ParentProcessId = $parent\")) {",
           "    $ids.Add([int]$p.ProcessId)",
           "    $queue.Enqueue([int]$p.ProcessId)",
           "  }",
@@ -138,16 +159,9 @@ async function spawnCapture(
           "$remaining = @(Get-Process -Id $targets -ErrorAction SilentlyContinue)",
           "if ($remaining.Count -gt 0) { exit 1 }",
         ].join("; ");
-        const fallbackCode = await new Promise<number | null>(
-          (resolveTermination) => {
-            const killer = spawn(
-              "powershell.exe",
-              ["-NoProfile", "-NonInteractive", "-Command", script],
-              { windowsHide: true, stdio: "ignore" },
-            );
-            killer.once("exit", (code) => resolveTermination(code));
-            killer.once("error", () => resolveTermination(null));
-          },
+        const fallbackCode = await runWindowsCleanupCommand(
+          "powershell.exe",
+          ["-NoProfile", "-NonInteractive", "-Command", script],
         );
         if (fallbackCode !== 0) {
           child.kill();
