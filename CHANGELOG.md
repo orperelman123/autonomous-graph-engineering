@@ -4,6 +4,9 @@ All notable changes are documented here.
 
 ## Unreleased
 
+- Isolate failures in read-only and deterministic nodes to their dependency
+  branches while preserving explicit human gates, graph-wide token and timeout
+  ceilings, and fail-closed reconciliation for consequential operations.
 - Add a transactional Hermes Agent host adapter that emits a credential-free
   config fragment for both MCP servers and the shared GraphVigil skills, with
   Hermes skill-write approval enabled.

@@ -423,6 +423,7 @@ test("runtime watchdog aborts a non-cooperative executor", async () => {
     assert.equal(result.status, "failed");
     assert.equal(aborted, true);
     assert.match(result.error ?? "", /executor timed out/);
+    assert.equal(result.nodes.execute?.failureScope, "graph");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -472,6 +473,7 @@ test("timed-out side-effecting executors require reconciliation", async () => {
       ["execute"],
     );
     assert.equal(checkpoint.nodes.execute?.failureKind, "timeout");
+    assert.equal(checkpoint.nodes.execute?.failureScope, "graph");
     assert.equal(needs[0]?.requiresTerminationConfirmation, true);
     assert.match(needs[0]?.idempotencyKey ?? "", /^graph:.*:node:execute$/);
     await assert.rejects(
@@ -726,6 +728,7 @@ test("stops when actual provider usage exceeds the graph token budget", async ()
     assert.equal(Object.hasOwn(result.outputs, "execute"), false);
     assert.equal(result.nodes.execute?.state, "failed");
     assert.equal(result.nodes.execute?.failureKind, "budget");
+    assert.equal(result.nodes.execute?.failureScope, "graph");
     assert.deepEqual(result.nodes.execute?.usage, {
       inputTokens: 500_001,
       outputTokens: 1,
@@ -738,6 +741,7 @@ test("stops when actual provider usage exceeds the graph token budget", async ()
     const checkpoint = await loadCheckpoint(directory, result.runId);
     assert.equal(Object.hasOwn(checkpoint.outputs, "execute"), false);
     assert.equal(checkpoint.nodes.execute?.failureKind, "budget");
+    assert.equal(checkpoint.nodes.execute?.failureScope, "graph");
 
     // Legacy checkpoints could commit the rejected output before enforcing the
     // budget and classified the failure as a generic executor error.
@@ -755,6 +759,7 @@ test("stops when actual provider usage exceeds the graph token budget", async ()
     assert.equal(Object.hasOwn(resumed.outputs, "execute"), false);
     assert.equal(resumed.nodes.execute?.state, "failed");
     assert.equal(resumed.nodes.execute?.failureKind, "budget");
+    assert.equal(resumed.nodes.execute?.failureScope, "graph");
     assert.equal(resumed.nodes.execute?.output, undefined);
     assert.deepEqual(
       resumed.nodes.execute?.usage,
@@ -915,6 +920,328 @@ test("runs independent ready DAG nodes concurrently within maxParallel", async (
     assert.equal(peak, 2);
   } finally {
     release?.();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("isolates a read-only node failure to its branch and finishes independent work", async () => {
+  const calls: string[] = [];
+  class BranchFailureExecutor implements GraphExecutor {
+    readonly name = "branch-failure";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      calls.push(request.nodeId);
+      if (request.nodeId === "a_fail") {
+        throw new Error("simulated local failure");
+      }
+      return { output: { nodeId: request.nodeId } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Compare independent local findings.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "a_fail",
+      label: "Failing branch",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "b_independent",
+      label: "Independent branch",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "c_failed_child",
+      label: "Failed child",
+      kind: "agent",
+      dependsOn: ["a_fail"],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "d_independent_child",
+      label: "Independent child",
+      kind: "agent",
+      dependsOn: ["b_independent"],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "e_join",
+      label: "Mixed join",
+      kind: "reduce",
+      dependsOn: ["a_fail", "b_independent"],
+      permission: "none",
+      operation: "collect",
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 1;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-branch-failure-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new BranchFailureExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.deepEqual(calls, [
+      "a_fail",
+      "b_independent",
+      "d_independent_child",
+    ]);
+    assert.equal(result.nodes.a_fail?.state, "failed");
+    assert.equal(result.nodes.a_fail?.failureScope, "branch");
+    assert.equal(result.nodes.b_independent?.state, "completed");
+    assert.equal(result.nodes.c_failed_child?.state, "skipped");
+    assert.equal(result.nodes.d_independent_child?.state, "completed");
+    assert.equal(result.nodes.e_join?.state, "skipped");
+    assert.deepEqual(
+      Object.keys(result.outputs).sort(),
+      ["b_independent", "d_independent_child"],
+    );
+    assert.match(result.error ?? "", /branch a_fail failed/);
+    const events = (await readFile(result.auditPath!, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { sequence: number; type: string });
+    assert.equal(
+      events.filter((event) => event.type === "node_skipped").length,
+      2,
+    );
+    assert.ok(events.every((event, index) => event.sequence === index + 1));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("preserves branch failure state across an independent human gate resume", async () => {
+  const calls: string[] = [];
+  class GatedBranchExecutor implements GraphExecutor {
+    readonly name = "gated-branch";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      calls.push(request.nodeId);
+      if (request.nodeId === "a_fail") {
+        throw new Error("local branch failed");
+      }
+      return { output: { completed: true } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Review local work, then deploy the approved result.",
+    autonomy: "consequential",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "a_fail",
+      label: "Failing local branch",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "b_gate",
+      label: "Confirm external action",
+      kind: "human_gate",
+      dependsOn: [],
+      permission: "none",
+    },
+    {
+      id: "c_independent",
+      label: "Independent local branch",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 2;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-gated-branch-"));
+  try {
+    const executor = new GatedBranchExecutor();
+    const blocked = await runGraph(graph, {
+      executors: { local: executor },
+      auditDirectory: directory,
+    });
+    assert.equal(blocked.status, "needs_confirmation");
+    assert.equal(blocked.nodes.a_fail?.failureScope, "branch");
+    assert.deepEqual(calls, ["a_fail"]);
+    const checkpoint = await loadCheckpoint(directory, blocked.runId);
+    const approvalToken = graphApprovalToken(graph, "b_gate");
+    const resumed = await runGraph(graph, {
+      executors: { local: executor },
+      approvals: [approvalToken],
+      auditDirectory: directory,
+      resume: checkpoint,
+    });
+    assert.equal(resumed.status, "failed");
+    assert.deepEqual(calls, ["a_fail", "c_independent"]);
+    assert.equal(resumed.nodes.a_fail?.state, "failed");
+    assert.equal(resumed.nodes.b_gate?.state, "completed");
+    assert.equal(resumed.nodes.c_independent?.state, "completed");
+    assert.match(resumed.error ?? "", /branch a_fail failed/);
+    const events = (await readFile(resumed.auditPath!, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { sequence: number; type: string });
+    assert.ok(events.some((event) => event.type === "run_blocked"));
+    assert.ok(events.some((event) => event.type === "run_resumed"));
+    assert.ok(events.every((event, index) => event.sequence === index + 1));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a graph-global token ceiling still stops independent branches", async () => {
+  const calls: string[] = [];
+  class GlobalBudgetExecutor implements GraphExecutor {
+    readonly name = "global-budget";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      calls.push(request.nodeId);
+      return {
+        output: { completed: true },
+        usage: { inputTokens: 2 },
+      };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Check two independent local results.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "a_budget",
+      label: "Budget exhaustion",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "b_independent",
+      label: "Independent result",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 1;
+  graph.budgets.maxActualTokens = 1;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-global-budget-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new GlobalBudgetExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.deepEqual(calls, ["a_budget"]);
+    assert.equal(result.nodes.a_budget?.state, "failed");
+    assert.equal(result.nodes.a_budget?.failureKind, "budget");
+    assert.equal(result.nodes.a_budget?.failureScope, "graph");
+    assert.equal(result.nodes.b_independent?.state, "pending");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a side-effecting node failure remains graph-scoped and never manufactures a gate", async () => {
+  const calls: string[] = [];
+  class SideEffectFailureExecutor implements GraphExecutor {
+    readonly name = "side-effect-failure";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      calls.push(request.nodeId);
+      if (request.nodeId === "b_write") {
+        throw new Error("ambiguous write failure");
+      }
+      return { output: { completed: true } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Apply an approved change and inspect an independent local result.",
+    autonomy: "consequential",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "a_confirm",
+      label: "Confirm write",
+      kind: "human_gate",
+      dependsOn: [],
+      permission: "none",
+    },
+    {
+      id: "b_write",
+      label: "Apply write",
+      kind: "agent",
+      dependsOn: ["a_confirm"],
+      permission: "write",
+      executor: "local",
+    },
+    {
+      id: "c_independent",
+      label: "Independent read",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "d_independent_child",
+      label: "Independent read child",
+      kind: "agent",
+      dependsOn: ["c_independent"],
+      permission: "read",
+      executor: "local",
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 1;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-write-failure-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new SideEffectFailureExecutor() },
+      approvals: [graphApprovalToken(graph, "a_confirm")],
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.confirmation, undefined);
+    assert.deepEqual(calls, ["b_write"]);
+    assert.equal(result.nodes.a_confirm?.state, "completed");
+    assert.equal(result.nodes.b_write?.state, "failed");
+    assert.equal(result.nodes.b_write?.failureScope, "graph");
+    assert.equal(result.nodes.c_independent?.state, "pending");
+    assert.equal(result.nodes.d_independent_child?.state, "pending");
+  } finally {
     await rm(directory, { recursive: true, force: true });
   }
 });

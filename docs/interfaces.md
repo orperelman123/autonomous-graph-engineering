@@ -56,6 +56,18 @@ evidence whose attempt ID and executor match the checkpoint. This evidence is
 operator-supplied and auditable; exactly-once behavior still depends on the
 downstream executor honoring the idempotency key.
 
+Failure scope is explicit in checkpoints and portable reports. Read-only or
+deterministic node failures are `branch` scoped: descendants are skipped while
+independent branches continue, and the run ultimately reports `failed`.
+Global token exhaustion, the graph-wide deadline, exhausted repair acceptance,
+and ambiguous side-effecting failures are `graph` scoped and stop scheduling.
+Only an explicit `human_gate` produces `needs_confirmation`; a ceiling never
+manufactures a gate or expands authority.
+
+This contract is host-independent. Hermes Agent invokes the same Graph Engineer
+MCP runtime, while its separate skill-write approval controls staged skill
+changes rather than graph failure handling.
+
 ## MCP
 
 Prompt Refiner exposes:
