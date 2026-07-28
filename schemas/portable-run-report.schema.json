@@ -56,6 +56,7 @@
               "id": { "type": "string", "minLength": 1 },
               "state": { "enum": ["pending", "running", "completed", "failed", "blocked", "skipped"] },
               "failureKind": { "enum": ["timeout", "budget", "executor"] },
+              "failureScope": { "enum": ["branch", "graph"] },
               "startedAt": { "type": "string", "format": "date-time" },
               "completedAt": { "type": "string", "format": "date-time" },
               "usage": { "$ref": "#/$defs/usage" }
@@ -94,7 +95,8 @@
               "type": {
                 "enum": [
                   "run_started", "run_resumed", "run_completed", "run_failed", "run_blocked",
-                  "node_started", "node_completed", "node_failed", "node_blocked", "node_reconciled",
+                  "node_started", "node_completed", "node_failed", "node_blocked", "node_skipped",
+                  "node_reconciled",
                   "repair_started", "repair_completed"
                 ]
               },

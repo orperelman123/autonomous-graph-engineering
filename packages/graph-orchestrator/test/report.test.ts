@@ -37,11 +37,17 @@ test("portable run report preserves structural evidence without free text", asyn
       },
     },
     nodes: Object.fromEntries(
-      graph.nodes.map((node) => [
+      graph.nodes.map((node, index) => [
         node.id,
         {
           nodeId: node.id,
-          state: "completed",
+          state: index === 0 ? "failed" : "completed",
+          ...(index === 0
+            ? {
+                failureKind: "executor" as const,
+                failureScope: "branch" as const,
+              }
+            : {}),
           output: { secret: "Sensitive node output" },
           startedAt,
           completedAt: startedAt,
@@ -94,6 +100,14 @@ test("portable run report preserves structural evidence without free text", asyn
       outputTokens: 5,
     });
     assert.equal(report.evidence.events.length, 2);
+    assert.deepEqual(report.execution.nodes[0], {
+      id: graph.nodes[0]?.id,
+      state: "failed",
+      failureKind: "executor",
+      failureScope: "branch",
+      startedAt,
+      completedAt: startedAt,
+    });
     assert.doesNotMatch(serialized, /Sensitive/);
     assert.doesNotMatch(serialized, /graph-report-/);
 

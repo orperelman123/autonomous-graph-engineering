@@ -163,7 +163,7 @@ test("portable run report satisfies its strict public schema", async () => {
     usage: {},
     startedAt: now,
     updatedAt: now,
-    eventSequence: 2,
+    eventSequence: 3,
   };
   await writeFile(
     join(directory, `${runId}.checkpoint.json`),
@@ -178,6 +178,12 @@ test("portable run report satisfies its strict public schema", async () => {
       type: "run_started",
     })}\n${JSON.stringify({
       sequence: 2,
+      runId,
+      timestamp: now,
+      type: "node_skipped",
+      nodeId: graph.nodes[0]?.id,
+    })}\n${JSON.stringify({
+      sequence: 3,
       runId,
       timestamp: now,
       type: "run_completed",

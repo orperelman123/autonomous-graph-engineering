@@ -38,6 +38,7 @@ export interface PortableRunReport {
       id: string;
       state: NodeRunResult["state"];
       failureKind?: NodeRunResult["failureKind"];
+      failureScope?: NodeRunResult["failureScope"];
       startedAt?: string;
       completedAt?: string;
       usage?: TokenUsage;
@@ -151,6 +152,9 @@ export async function createPortableRunReport(
           state: result?.state ?? "pending",
           ...(result?.failureKind
             ? { failureKind: result.failureKind }
+            : {}),
+          ...(result?.failureScope
+            ? { failureScope: result.failureScope }
             : {}),
           ...(result?.startedAt ? { startedAt: result.startedAt } : {}),
           ...(result?.completedAt

@@ -146,6 +146,7 @@ export interface GraphRunEvent {
     | "node_completed"
     | "node_failed"
     | "node_blocked"
+    | "node_skipped"
     | "node_reconciled"
     | "repair_started"
     | "repair_completed";
@@ -159,6 +160,7 @@ export interface NodeRunResult {
   output?: unknown;
   error?: string;
   failureKind?: "timeout" | "budget" | "executor";
+  failureScope?: "branch" | "graph";
   idempotencyKey?: string;
   attemptId?: string;
   startedAt?: string;

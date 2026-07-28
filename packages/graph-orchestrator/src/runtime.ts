@@ -101,6 +101,14 @@ function combinedUsage(...values: Array<TokenUsage | undefined>): TokenUsage {
 
 class UsageBudgetExceededError extends Error {}
 
+class BranchFailuresError extends Error {}
+
+class GraphDeadlineExceededError extends Error {
+  constructor() {
+    super("graph execution timed out");
+  }
+}
+
 function usageExceedsBudget(graph: GraphSpec, usage: TokenUsage): boolean {
   const consumed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
   const budget =
@@ -243,6 +251,47 @@ class ExecutorTimeoutError extends Error {
   constructor(readonly nodeId: string) {
     super(`executor timed out for node ${nodeId}`);
   }
+}
+
+function isSideEffecting(node: GraphNode): boolean {
+  return node.permission !== "none" && node.permission !== "read";
+}
+
+function failureScope(
+  node: GraphNode,
+  error: unknown,
+): "branch" | "graph" {
+  if (
+    error instanceof UsageBudgetExceededError ||
+    error instanceof ExecutorTimeoutError ||
+    error instanceof GraphDeadlineExceededError
+  ) {
+    return "graph";
+  }
+  return isSideEffecting(node) ? "graph" : "branch";
+}
+
+function branchFailureError(
+  graph: GraphSpec,
+  nodes: Record<string, NodeRunResult>,
+): BranchFailuresError | undefined {
+  const failures = graph.nodes
+    .map((node) => nodes[node.id])
+    .filter(
+      (state): state is NodeRunResult =>
+        state?.state === "failed" && state.failureScope === "branch",
+    );
+  if (failures.length === 0) return undefined;
+  if (failures.length === 1) {
+    const [failure] = failures;
+    return new BranchFailuresError(
+      `branch ${failure?.nodeId ?? "unknown"} failed: ${failure?.error ?? "unknown failure"}`,
+    );
+  }
+  const detail = failures
+    .map((state) => `${state.nodeId}: ${state.error ?? "unknown failure"}`)
+    .join("; ");
+  return new BranchFailuresError(`branches failed: ${detail}`);
 }
 
 function dependencyInput(
@@ -461,6 +510,12 @@ export async function runGraph(
           if (prior?.state === "completed") {
             return [node.id, { ...prior }];
           }
+          if (
+            resume.status === "needs_confirmation" &&
+            (prior?.state === "failed" || prior?.state === "skipped")
+          ) {
+            return [node.id, { ...prior }];
+          }
           if (prior && resumeOverBudget) {
             const { output: _rejectedOutput, ...preserved } = prior;
             return [
@@ -468,7 +523,10 @@ export async function runGraph(
               {
                 ...preserved,
                 ...(prior.state === "failed"
-                  ? { failureKind: "budget" as const }
+                  ? {
+                      failureKind: "budget" as const,
+                      failureScope: "graph" as const,
+                    }
                   : {}),
               },
             ];
@@ -549,10 +607,46 @@ export async function runGraph(
     assertUsageBudget(graph, usage);
     const pending = new Set(
       validation.topologicalOrder.filter(
-        (nodeId) => nodes[nodeId]?.state !== "completed",
+        (nodeId) => nodes[nodeId]?.state === "pending",
       ),
     );
+    const skipFailedDescendants = async (): Promise<void> => {
+      let changed = false;
+      for (const nodeId of validation.topologicalOrder) {
+        if (!pending.has(nodeId)) continue;
+        const node = graph.nodes.find((item) => item.id === nodeId);
+        const failedDependencies =
+          node?.dependsOn.filter((dependency) => {
+            const state = nodes[dependency]?.state;
+            return state === "failed" || state === "skipped";
+          }) ?? [];
+        if (failedDependencies.length === 0) continue;
+        const state = nodes[nodeId];
+        if (!state) continue;
+        state.state = "skipped";
+        state.error =
+          `dependency failed or was skipped: ${failedDependencies.join(", ")}`;
+        state.completedAt = now().toISOString();
+        pending.delete(nodeId);
+        changed = true;
+        await store.append(
+          {
+            runId,
+            type: "node_skipped",
+            nodeId,
+            data: {
+              reason: state.error,
+              dependencies: failedDependencies,
+            },
+          },
+          now(),
+        );
+      }
+      if (changed) await saveCheckpoint("running");
+    };
     while (pending.size > 0) {
+      await skipFailedDescendants();
+      if (pending.size === 0) break;
       const ready = validation.topologicalOrder.filter((nodeId) => {
         if (!pending.has(nodeId)) return false;
         const node = graph.nodes.find((item) => item.id === nodeId);
@@ -573,7 +667,11 @@ export async function runGraph(
           const node = graph.nodes.find((item) => item.id === nodeId);
           const state = nodes[nodeId];
           if (!node || !state) {
-            return { nodeId, error: new Error(`node missing: ${nodeId}`) };
+            return {
+              nodeId,
+              error: new Error(`node missing: ${nodeId}`),
+              failureScope: "graph" as const,
+            };
           }
           state.state = "running";
           state.startedAt = now().toISOString();
@@ -588,7 +686,9 @@ export async function runGraph(
           await saveCheckpoint("running");
           try {
             const remainingMs = deadline - Date.now();
-            if (remainingMs <= 0) throw new Error("graph execution timed out");
+            if (remainingMs <= 0) {
+              throw new GraphDeadlineExceededError();
+            }
             const execution = await executeNode(
               graph,
               node,
@@ -649,6 +749,7 @@ export async function runGraph(
               /timed out/i.test(state.error)
                 ? "timeout"
                 : "executor";
+            state.failureScope = failureScope(node, error);
             await store.append(
               {
                 runId,
@@ -657,6 +758,7 @@ export async function runGraph(
                 data: {
                   error: state.error,
                   failureKind: state.failureKind,
+                  failureScope: state.failureScope,
                   ...(state.idempotencyKey
                     ? { idempotencyKey: state.idempotencyKey }
                     : {}),
@@ -665,11 +767,30 @@ export async function runGraph(
               now(),
             );
             await saveCheckpoint("running");
-            return { nodeId, error };
+            return {
+              nodeId,
+              error,
+              failureScope: state.failureScope,
+            };
           }
         }),
       );
       batch.forEach((nodeId) => pending.delete(nodeId));
+      const globalFailure = outcomes.find(
+        (
+          outcome,
+        ): outcome is {
+          nodeId: string;
+          error: unknown;
+          failureScope: "graph";
+        } =>
+          "error" in outcome &&
+          outcome.error !== undefined &&
+          "failureScope" in outcome &&
+          outcome.failureScope === "graph",
+      );
+      if (globalFailure) throw globalFailure.error;
+      await skipFailedDescendants();
       const gate = outcomes.find(
         (
           outcome,
@@ -706,9 +827,10 @@ export async function runGraph(
           },
         };
       }
-      const failure = outcomes.find((outcome) => outcome.error);
-      if (failure?.error) throw failure.error;
     }
+
+    const failedBranches = branchFailureError(graph, nodes);
+    if (failedBranches) throw failedBranches;
 
     const policy = graph.repairPolicy;
     if (policy) {
@@ -724,7 +846,7 @@ export async function runGraph(
         repairRounds < graph.budgets.maxRepairRounds
       ) {
         const remainingMs = deadline - Date.now();
-        if (remainingMs <= 0) throw new Error("graph execution timed out");
+        if (remainingMs <= 0) throw new GraphDeadlineExceededError();
         repairRounds += 1;
         await store.append(
           {
