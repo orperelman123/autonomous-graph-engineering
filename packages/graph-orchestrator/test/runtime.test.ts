@@ -2272,3 +2272,71 @@ test("a failed audit write does not poison later writes", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("parallel_map aggregates attribution across item executions", async () => {
+  class MixedAttributionExecutor implements GraphExecutor {
+    readonly name = "mixed-attribution";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "seed") {
+        return { output: [1, 2] };
+      }
+      const index = Number(request.nodeId.split(":")[1]);
+      return {
+        output: { completed: true },
+        attribution: {
+          provider: "claude",
+          model: index === 0 ? "claude-sonnet-5" : "claude-haiku-4-5",
+          latencyMs: index === 0 ? 100 : 250,
+          retries: index === 0 ? 1 : 2,
+        },
+      };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect two sources.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "seed",
+      label: "Seed",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "fan",
+      label: "Fan",
+      kind: "parallel_map",
+      dependsOn: ["seed"],
+      permission: "read",
+      executor: "local",
+      maxConcurrency: 2,
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 2;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-fanout-attribution-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new MixedAttributionExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "completed");
+    // Equal string fields survive, conflicting ones are omitted,
+    // latencyMs is the maximum, and retries are summed.
+    assert.deepEqual(result.nodes.fan?.attribution, {
+      provider: "claude",
+      latencyMs: 250,
+      retries: 3,
+    });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

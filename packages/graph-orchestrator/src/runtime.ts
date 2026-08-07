@@ -1025,7 +1025,11 @@ export async function runGraph(
           );
         }
         if (candidateState && repairExecution.attribution) {
-          candidateState.attribution = repairExecution.attribution;
+          const merged = combinedAttribution(
+            candidateState.attribution,
+            repairExecution.attribution,
+          );
+          if (merged) candidateState.attribution = merged;
         }
         assertUsageBudget(graph, usage);
         candidate = validatedOutput(
@@ -1059,7 +1063,11 @@ export async function runGraph(
           );
         }
         if (verifierState && verifyExecution.attribution) {
-          verifierState.attribution = verifyExecution.attribution;
+          const merged = combinedAttribution(
+            verifierState.attribution,
+            verifyExecution.attribution,
+          );
+          if (merged) verifierState.attribution = merged;
         }
         assertUsageBudget(graph, usage);
         verifierOutput = validatedOutput(
