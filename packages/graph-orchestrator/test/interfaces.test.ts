@@ -400,3 +400,67 @@ test("HTTP API enforces a configured bearer token", async () => {
     );
   }
 });
+
+test("HTTP run endpoint refuses to execute without a configured API key", async () => {
+  const server = startGraphServer({ host: "127.0.0.1", port: 0 });
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const base = `http://127.0.0.1:${address.port}`;
+    const refused = await fetch(`${base}/v1/graphs/run`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        prompt: "Audit every service and verify findings.",
+        autonomy: "plan_only",
+      }),
+    });
+    assert.equal(refused.status, 403);
+    const payload = (await refused.json()) as { error: string };
+    assert.match(payload.error, /GRAPH_ENGINEER_API_KEY/);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+});
+
+test("HTTP API rejects browser-originated and non-JSON POST requests", async () => {
+  const server = startGraphServer({
+    host: "127.0.0.1",
+    port: 0,
+    apiKey: "test-secret",
+  });
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const base = `http://127.0.0.1:${address.port}`;
+
+    const crossSite = await fetch(`${base}/v1/graphs/plan`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-secret",
+        "content-type": "application/json",
+        origin: "http://evil.example",
+      },
+      body: JSON.stringify({ prompt: "Explain this function." }),
+    });
+    assert.equal(crossSite.status, 403);
+
+    const wrongType = await fetch(`${base}/v1/graphs/plan`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-secret",
+        "content-type": "text/plain",
+      },
+      body: JSON.stringify({ prompt: "Explain this function." }),
+    });
+    assert.equal(wrongType.status, 415);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+});

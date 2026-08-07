@@ -157,3 +157,31 @@ test("an empty evaluation corpus never reports a perfect score", () => {
   assert.equal(report.total, 0);
   assert.equal(report.passRate, 0);
 });
+
+test("secret redaction preserves matched prefixes and covers common formats", async () => {
+  const { redactSecrets } = await import("../src/security.js");
+
+  const password = redactSecrets("password: hunter2");
+  assert.equal(password.text, "password=[REDACTED]");
+  assert.equal(password.redactions, 1);
+
+  const bearer = redactSecrets("authorization: Bearer abcdefghijklmnop1234");
+  assert.match(bearer.text, /Bearer \[REDACTED_TOKEN\]/);
+
+  assert.match(
+    redactSecrets("aws key AKIAABCDEFGHIJKLMNOP in use").text,
+    /\[REDACTED_AWS_KEY\]/,
+  );
+  assert.match(
+    redactSecrets(
+      "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcde12345",
+    ).text,
+    /\[REDACTED_JWT\]/,
+  );
+  assert.match(
+    redactSecrets(
+      "-----BEGIN PRIVATE KEY-----\nMIIEv002\n-----END PRIVATE KEY-----",
+    ).text,
+    /\[REDACTED_PRIVATE_KEY\]/,
+  );
+});

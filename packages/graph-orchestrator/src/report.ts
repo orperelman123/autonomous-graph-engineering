@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { loadCheckpoint } from "./persistence.js";
+import { assertSafeRunId, loadCheckpoint } from "./persistence.js";
 import { graphFingerprint } from "./runtime.js";
 import type {
   GraphRunCheckpoint,
@@ -89,8 +89,9 @@ export async function createPortableRunReport(
   directory: string,
   runId: string,
 ): Promise<PortableRunReport> {
-  const checkpointPath = resolve(directory, `${runId}.checkpoint.json`);
-  const auditPath = resolve(directory, `${runId}.jsonl`);
+  const safeRunId = assertSafeRunId(runId);
+  const checkpointPath = resolve(directory, `${safeRunId}.checkpoint.json`);
+  const auditPath = resolve(directory, `${safeRunId}.jsonl`);
   const [checkpointRaw, auditRaw, checkpoint] = await Promise.all([
     readFile(checkpointPath, "utf8"),
     readFile(auditPath, "utf8"),

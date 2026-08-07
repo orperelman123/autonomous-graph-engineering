@@ -99,6 +99,12 @@ function combinedUsage(...values: Array<TokenUsage | undefined>): TokenUsage {
   return result;
 }
 
+/** Errors may carry the usage that partially failed work actually consumed,
+ * so budget accounting stays truthful even when a node does not complete. */
+interface PartialUsageCarrier {
+  partialUsage?: TokenUsage;
+}
+
 class UsageBudgetExceededError extends Error {}
 
 class BranchFailuresError extends Error {}
@@ -166,26 +172,62 @@ function deterministic(node: GraphNode, input: unknown): unknown {
   }
 }
 
-async function mapLimit<T, R>(
+interface MapLimitOutcome<R> {
+  settlements: Array<PromiseSettledResult<R>>;
+  firstFailure?: unknown;
+}
+
+async function mapLimitSettled<T, R>(
   values: T[],
   limit: number,
   mapper: (value: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(values.length);
+  onFirstFailure?: () => void,
+): Promise<MapLimitOutcome<R>> {
+  const results = new Array<PromiseSettledResult<R>>(values.length);
   let cursor = 0;
+  let firstFailure: unknown;
+  let failed = false;
+  const recordFailure = (index: number, reason: unknown): void => {
+    results[index] = { status: "rejected", reason };
+    if (!failed) {
+      failed = true;
+      firstFailure = reason;
+      onFirstFailure?.();
+    }
+  };
   const workers = Array.from(
     { length: Math.min(Math.max(1, limit), Math.max(1, values.length)) },
     async () => {
       while (cursor < values.length) {
+        if (failed) return;
         const index = cursor++;
         const value = values[index];
-        if (value === undefined) continue;
-        results[index] = await mapper(value, index);
+        if (value === undefined) {
+          recordFailure(
+            index,
+            new Error(`fan-out item ${index} is undefined`),
+          );
+          return;
+        }
+        try {
+          results[index] = {
+            status: "fulfilled",
+            value: await mapper(value, index),
+          };
+        } catch (error) {
+          recordFailure(index, error);
+        }
       }
     },
   );
   await Promise.all(workers);
-  return results;
+  for (let index = 0; index < results.length; index += 1) {
+    results[index] ??= {
+      status: "rejected",
+      reason: new Error(`fan-out item ${index} cancelled before start`),
+    };
+  }
+  return failed ? { settlements: results, firstFailure } : { settlements: results };
 }
 
 type RunLimited = <T>(task: () => Promise<T>) => Promise<T>;
@@ -232,6 +274,10 @@ async function invokeExecutor(
   request: AgentExecutionRequest,
 ): Promise<Awaited<ReturnType<GraphExecutor["execute"]>>> {
   const controller = new AbortController();
+  const external = request.signal;
+  const onExternalAbort = (): void => controller.abort();
+  external?.addEventListener("abort", onExternalAbort, { once: true });
+  if (external?.aborted) controller.abort();
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const execution = executor.execute({ ...request, signal: controller.signal });
   const watchdog = new Promise<never>((_, reject) => {
@@ -244,6 +290,7 @@ async function invokeExecutor(
     return await Promise.race([execution, watchdog]);
   } finally {
     if (timeout) clearTimeout(timeout);
+    external?.removeEventListener("abort", onExternalAbort);
   }
 }
 
@@ -340,7 +387,8 @@ async function executeNode(
         `node ${node.id} fan-out ${items.length} exceeds maxFanout ${graph.budgets.maxFanout}`,
       );
     }
-    const executions = await mapLimit(
+    const fanoutAbort = new AbortController();
+    const { settlements, firstFailure } = await mapLimitSettled(
       items,
       node.maxConcurrency ?? graph.budgets.maxParallel,
       async (item, index) => {
@@ -355,6 +403,7 @@ async function executeNode(
               ...(node.outputSchema ? { outputSchema: node.outputSchema } : {}),
               cwd: options.cwd ?? process.cwd(),
               timeoutMs,
+              signal: fanoutAbort.signal,
               ...(attemptId ? { attemptId: `${attemptId}:${index}` } : {}),
               ...(node.permission !== "none" && node.permission !== "read"
                 ? {
@@ -371,10 +420,30 @@ async function executeNode(
           usage: execution.usage,
         };
       },
+      () => fanoutAbort.abort(),
     );
+    const fanoutUsage = combinedUsage(
+      ...settlements.map((settlement) =>
+        settlement.status === "fulfilled" ? settlement.value.usage : undefined,
+      ),
+    );
+    if (firstFailure !== undefined) {
+      // Fail the node with the root failure, but keep the tokens the
+      // successful siblings actually consumed so budgets stay truthful.
+      const error =
+        firstFailure instanceof Error
+          ? firstFailure
+          : new Error(String(firstFailure));
+      if (Object.keys(fanoutUsage).length > 0) {
+        (error as PartialUsageCarrier).partialUsage = fanoutUsage;
+      }
+      throw error;
+    }
     return {
-      output: executions.map((execution) => execution.output),
-      usage: combinedUsage(...executions.map((execution) => execution.usage)),
+      output: settlements.map((settlement) =>
+        settlement.status === "fulfilled" ? settlement.value.output : undefined,
+      ),
+      usage: fanoutUsage,
     };
   }
   const request: AgentExecutionRequest = {
@@ -492,7 +561,10 @@ export async function runGraph(
     }
   }
   const runId = resume?.runId ?? randomUUID();
-  const deadline = Date.now() + graph.budgets.timeoutMs;
+  const priorElapsedMs = resume?.elapsedMs ?? 0;
+  const runStartedAtMs = Date.now();
+  const deadline =
+    runStartedAtMs + Math.max(0, graph.budgets.timeoutMs - priorElapsedMs);
   const auditDirectory =
     options.auditDirectory ?? resolve(options.cwd ?? process.cwd(), ".graph-runs");
   const store = new JsonlEventStore(
@@ -571,6 +643,7 @@ export async function runGraph(
       startedAt,
       updatedAt: now().toISOString(),
       eventSequence: store.sequence,
+      elapsedMs: priorElapsedMs + (Date.now() - runStartedAtMs),
       reconciliations: resume?.reconciliations ?? [],
     });
   };
@@ -721,6 +794,11 @@ export async function runGraph(
             return { nodeId };
           } catch (error) {
             state.completedAt = now().toISOString();
+            const partialUsage = (error as PartialUsageCarrier).partialUsage;
+            if (partialUsage) {
+              usage = combinedUsage(usage, partialUsage);
+              state.usage = combinedUsage(state.usage, partialUsage);
+            }
             if (error instanceof HumanGateRequired) {
               state.state = "blocked";
               state.error = error.message;
@@ -746,9 +824,10 @@ export async function runGraph(
               error instanceof UsageBudgetExceededError
                 ? "budget"
                 : error instanceof ExecutorTimeoutError ||
-              /timed out/i.test(state.error)
-                ? "timeout"
-                : "executor";
+                    error instanceof GraphDeadlineExceededError ||
+                    /\bexecution timed out\b/.test(state.error)
+                  ? "timeout"
+                  : "executor";
             state.failureScope = failureScope(node, error);
             await store.append(
               {

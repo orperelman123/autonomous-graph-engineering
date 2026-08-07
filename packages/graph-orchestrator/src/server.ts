@@ -87,6 +87,20 @@ export function startGraphServer(
         respond(response, 404, { error: "not found" });
         return;
       }
+      if (request.headers.origin !== undefined) {
+        respond(response, 403, {
+          error:
+            "browser-originated requests are not accepted; call the API from a non-browser client",
+        });
+        return;
+      }
+      const contentType = request.headers["content-type"] ?? "";
+      if (!/^application\/json\b/i.test(contentType)) {
+        respond(response, 415, {
+          error: "content-type must be application/json",
+        });
+        return;
+      }
       const input = (await body(request)) as Record<string, unknown>;
       if (request.url === "/v1/graphs/plan") {
         respond(response, 200, planGraph(input as unknown as PlanGraphRequest));
@@ -97,6 +111,13 @@ export function startGraphServer(
         return;
       }
       if (request.url === "/v1/graphs/run") {
+        if (!apiKey) {
+          respond(response, 403, {
+            error:
+              "GRAPH_ENGINEER_API_KEY must be configured to run graphs over HTTP",
+          });
+          return;
+        }
         const graph =
           "graph" in input
             ? (input.graph as GraphSpec)
