@@ -51,6 +51,15 @@ test("portable run report preserves structural evidence without free text", asyn
           output: { secret: "Sensitive node output" },
           startedAt,
           completedAt: startedAt,
+          ...(index === 0
+            ? {
+                attribution: {
+                  provider: "claude",
+                  model: "claude-sonnet-5",
+                  latencyMs: 900,
+                },
+              }
+            : {}),
         },
       ]),
     ),
@@ -107,6 +116,11 @@ test("portable run report preserves structural evidence without free text", asyn
       failureScope: "branch",
       startedAt,
       completedAt: startedAt,
+      attribution: {
+        provider: "claude",
+        model: "claude-sonnet-5",
+        latencyMs: 900,
+      },
     });
     assert.doesNotMatch(serialized, /Sensitive/);
     assert.doesNotMatch(serialized, /graph-report-/);

@@ -16,6 +16,7 @@ import type {
   NodeRunResult,
   RunGraphOptions,
   TokenUsage,
+  UsageAttribution,
 } from "./types.js";
 import { validateGraph } from "./validator.js";
 
@@ -103,6 +104,41 @@ function combinedUsage(...values: Array<TokenUsage | undefined>): TokenUsage {
  * so budget accounting stays truthful even when a node does not complete. */
 interface PartialUsageCarrier {
   partialUsage?: TokenUsage;
+}
+
+function combinedAttribution(
+  ...values: Array<UsageAttribution | undefined>
+): UsageAttribution | undefined {
+  const present = values.filter((value): value is UsageAttribution =>
+    Boolean(value),
+  );
+  if (present.length === 0) return undefined;
+  const result: UsageAttribution = {};
+  for (const field of [
+    "provider",
+    "model",
+    "requestType",
+    "billingBucket",
+  ] as const) {
+    const defined = present
+      .map((value) => value[field])
+      .filter((value): value is string => value !== undefined);
+    const first = defined[0];
+    if (first !== undefined && defined.every((value) => value === first)) {
+      result[field] = first;
+    }
+  }
+  const latencies = present
+    .map((value) => value.latencyMs)
+    .filter((value): value is number => value !== undefined);
+  if (latencies.length > 0) result.latencyMs = Math.max(...latencies);
+  const retries = present
+    .map((value) => value.retries)
+    .filter((value): value is number => value !== undefined);
+  if (retries.length > 0) {
+    result.retries = retries.reduce((total, value) => total + value, 0);
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 class UsageBudgetExceededError extends Error {}
@@ -359,7 +395,11 @@ async function executeNode(
   timeoutMs: number,
   runLimited: RunLimited,
   attemptId?: string,
-): Promise<{ output: unknown; usage?: TokenUsage }> {
+): Promise<{
+  output: unknown;
+  usage?: TokenUsage;
+  attribution?: UsageAttribution;
+}> {
   const input = dependencyInput(node, outputs);
   if (node.kind === "deterministic" || node.kind === "reduce") {
     return { output: validatedOutput(node, deterministic(node, input)) };
@@ -418,6 +458,7 @@ async function executeNode(
         return {
           output: validatedOutput(node, execution.output),
           usage: execution.usage,
+          attribution: execution.attribution,
         };
       },
       () => fanoutAbort.abort(),
@@ -439,11 +480,19 @@ async function executeNode(
       }
       throw error;
     }
+    const attribution = combinedAttribution(
+      ...settlements.map((settlement) =>
+        settlement.status === "fulfilled"
+          ? settlement.value.attribution
+          : undefined,
+      ),
+    );
     return {
       output: settlements.map((settlement) =>
         settlement.status === "fulfilled" ? settlement.value.output : undefined,
       ),
       usage: fanoutUsage,
+      ...(attribution ? { attribution } : {}),
     };
   }
   const request: AgentExecutionRequest = {
@@ -465,6 +514,7 @@ async function executeNode(
   return {
     output: validatedOutput(node, execution.output),
     ...(execution.usage ? { usage: execution.usage } : {}),
+    ...(execution.attribution ? { attribution: execution.attribution } : {}),
   };
 }
 
@@ -776,6 +826,9 @@ export async function runGraph(
             if (execution.usage) {
               state.usage = combinedUsage(state.usage, execution.usage);
             }
+            if (execution.attribution) {
+              state.attribution = execution.attribution;
+            }
             assertUsageBudget(graph, usage);
             outputs[node.id] = execution.output;
             state.state = "completed";
@@ -786,7 +839,12 @@ export async function runGraph(
                 runId,
                 type: "node_completed",
                 nodeId: node.id,
-                data: { output: outputs[node.id] },
+                data: {
+                  output: outputs[node.id],
+                  ...(execution.attribution
+                    ? { attribution: execution.attribution }
+                    : {}),
+                },
               },
               now(),
             );
@@ -966,6 +1024,13 @@ export async function runGraph(
             repairExecution.usage,
           );
         }
+        if (candidateState && repairExecution.attribution) {
+          const merged = combinedAttribution(
+            candidateState.attribution,
+            repairExecution.attribution,
+          );
+          if (merged) candidateState.attribution = merged;
+        }
         assertUsageBudget(graph, usage);
         candidate = validatedOutput(
           candidateNode,
@@ -996,6 +1061,13 @@ export async function runGraph(
             verifierState.usage,
             verifyExecution.usage,
           );
+        }
+        if (verifierState && verifyExecution.attribution) {
+          const merged = combinedAttribution(
+            verifierState.attribution,
+            verifyExecution.attribution,
+          );
+          if (merged) verifierState.attribution = merged;
         }
         assertUsageBudget(graph, usage);
         verifierOutput = validatedOutput(

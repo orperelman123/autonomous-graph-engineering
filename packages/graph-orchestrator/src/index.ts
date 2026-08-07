@@ -75,5 +75,6 @@ export type {
   TerminationEvidence,
   RunGraphOptions,
   TokenUsage,
+  UsageAttribution,
   ValidationIssue,
 } from "./types.js";

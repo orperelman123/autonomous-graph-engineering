@@ -310,9 +310,15 @@ export function parseClaudeEnvelope(stdout: string): AgentExecutionResult {
         result?: string;
         total_cost_usd?: number;
         usage?: Record<string, unknown>;
+        modelUsage?: Record<string, unknown>;
       }
     | string;
   if (typeof envelope === "string") return { output: envelope };
+  const modelNames =
+    envelope.modelUsage && typeof envelope.modelUsage === "object"
+      ? Object.keys(envelope.modelUsage)
+      : [];
+  const model = modelNames.length === 1 ? modelNames[0] : undefined;
   const rawUsage = envelope.usage;
   const uncachedInputTokens = finiteNumber(rawUsage?.input_tokens);
   const cachedInputTokens = finiteNumber(rawUsage?.cache_read_input_tokens);
@@ -341,6 +347,7 @@ export function parseClaudeEnvelope(stdout: string): AgentExecutionResult {
   return {
     output: maybeJson(envelope.result ?? ""),
     ...(Object.keys(usage).length > 0 ? { usage } : {}),
+    ...(model ? { attribution: { model } } : {}),
   };
 }
 
@@ -354,6 +361,7 @@ export class CodexCliExecutor implements GraphExecutor {
     const executable = resolveAgentCommand("codex", {
       ...(configured ? { configured } : {}),
     });
+    const startedAt = Date.now();
     const output = await spawnCapture(
       executable.command,
       [...executable.prefix, ...codexArgs(request)],
@@ -370,7 +378,15 @@ export class CodexCliExecutor implements GraphExecutor {
         `Codex node failed (${output.code}): ${diagnostic}`,
       );
     }
-    return parseCodexJsonl(output.stdout);
+    const parsed = parseCodexJsonl(output.stdout);
+    return {
+      ...parsed,
+      attribution: {
+        provider: this.name,
+        latencyMs: Date.now() - startedAt,
+        ...parsed.attribution,
+      },
+    };
   }
 }
 
@@ -384,6 +400,7 @@ export class ClaudeCliExecutor implements GraphExecutor {
     const executable = resolveAgentCommand("claude", {
       ...(configured ? { configured } : {}),
     });
+    const startedAt = Date.now();
     const output = await spawnCapture(
       executable.command,
       [...executable.prefix, ...claudeArgs(request)],
@@ -400,7 +417,15 @@ export class ClaudeCliExecutor implements GraphExecutor {
         `Claude node failed (${output.code}): ${diagnostic}`,
       );
     }
-    return parseClaudeEnvelope(output.stdout);
+    const parsed = parseClaudeEnvelope(output.stdout);
+    return {
+      ...parsed,
+      attribution: {
+        provider: this.name,
+        latencyMs: Date.now() - startedAt,
+        ...parsed.attribution,
+      },
+    };
   }
 }
 

@@ -116,6 +116,7 @@ export interface AgentExecutionRequest {
 export interface AgentExecutionResult {
   output: unknown;
   usage?: TokenUsage;
+  attribution?: UsageAttribution;
 }
 
 export interface TokenUsage {
@@ -125,6 +126,15 @@ export interface TokenUsage {
   outputTokens?: number;
   reasoningOutputTokens?: number;
   costUsd?: number;
+}
+
+export interface UsageAttribution {
+  provider?: string;
+  model?: string;
+  requestType?: string;
+  latencyMs?: number;
+  retries?: number;
+  billingBucket?: string;
 }
 
 export interface GraphExecutor {
@@ -166,6 +176,7 @@ export interface NodeRunResult {
   startedAt?: string;
   completedAt?: string;
   usage?: TokenUsage;
+  attribution?: UsageAttribution;
 }
 
 export interface GraphRunResult {

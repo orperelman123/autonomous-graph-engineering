@@ -59,7 +59,8 @@
               "failureScope": { "enum": ["branch", "graph"] },
               "startedAt": { "type": "string", "format": "date-time" },
               "completedAt": { "type": "string", "format": "date-time" },
-              "usage": { "$ref": "#/$defs/usage" }
+              "usage": { "$ref": "#/$defs/usage" },
+              "attribution": { "$ref": "#/$defs/attribution" }
             }
           }
         }
@@ -146,6 +147,18 @@
         "outputTokens": { "type": "integer", "minimum": 0 },
         "reasoningOutputTokens": { "type": "integer", "minimum": 0 },
         "costUsd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "requestType": { "type": "string", "minLength": 1 },
+        "latencyMs": { "type": "number", "minimum": 0 },
+        "retries": { "type": "integer", "minimum": 0 },
+        "billingBucket": { "type": "string", "minLength": 1 }
       }
     }
   }

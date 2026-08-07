@@ -8,6 +8,7 @@ import type {
   GraphRunEvent,
   NodeRunResult,
   TokenUsage,
+  UsageAttribution,
 } from "./types.js";
 
 export interface PortableRunReport {
@@ -42,6 +43,7 @@ export interface PortableRunReport {
       startedAt?: string;
       completedAt?: string;
       usage?: TokenUsage;
+      attribution?: UsageAttribution;
     }>;
   };
   verifier: {
@@ -162,6 +164,9 @@ export async function createPortableRunReport(
             ? { completedAt: result.completedAt }
             : {}),
           ...(result?.usage ? { usage: result.usage } : {}),
+          ...(result?.attribution
+            ? { attribution: result.attribution }
+            : {}),
         };
       }),
     },
