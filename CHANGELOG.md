@@ -2,8 +2,31 @@
 
 All notable changes are documented here.
 
-## Unreleased
+## 0.3.4 - 2026-08-07
 
+- Add optional per-node usage attribution (provider, model, request type,
+  latency, retries, billing bucket) that executors can pass through into node
+  results, checkpoints, `node_completed` audit events, and the portable run
+  report; built-in Codex and Claude executors stamp provider and measured
+  latency, and the Claude envelope parser extracts the model when unambiguous.
+- Require a configured `GRAPH_ENGINEER_API_KEY` for `POST /v1/graphs/run`,
+  reject browser-originated requests, and require `application/json` bodies,
+  closing unauthenticated local execution and cross-site request paths.
+- Record cumulative `elapsedMs` in checkpoints so `budgets.timeoutMs` bounds a
+  run's lifetime across resumes instead of resetting on each resume.
+- Keep the tokens successful fan-out siblings consumed when a `parallel_map`
+  item fails, abort in-flight siblings, cancel unstarted items explicitly, and
+  fail loudly on `undefined` fan-out items instead of dropping them.
+- Classify timeout failures with typed errors instead of message sniffing.
+- Validate run IDs against path traversal wherever run files are resolved,
+  shape-validate checkpoints on load, and stop a failed audit or checkpoint
+  write from poisoning every later write.
+- Frame node input in executor prompts explicitly as untrusted data.
+- Fix secret redaction to preserve matched prefixes and cover AWS keys, JWTs,
+  and private-key blocks.
+- Document the security model honestly in SECURITY.md: gate tokens bind graph
+  content rather than approver identity, gate insertion is heuristic, and
+  token budgets rely on executor-reported usage.
 - Bound Windows executor process-tree cleanup helpers and make timeout tests
   readiness-aware under delayed or absent descendant startup.
 - Isolate failures in read-only and deterministic nodes to their dependency

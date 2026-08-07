@@ -25,13 +25,13 @@ test("release version is synchronized across packages, plugins, and servers", as
   );
   assert.deepEqual(
     manifests.map((manifest) => manifest.version),
-    Array(manifests.length).fill("0.3.3"),
+    Array(manifests.length).fill("0.3.4"),
   );
   assert.equal(
     manifests[2]?.dependencies?.[
       "@autonomous-graph-engineering/prompt-refiner"
     ],
-    "0.3.3",
+    "0.3.4",
   );
   for (const path of [
     "packages/prompt-refiner/src/version.ts",
@@ -39,7 +39,7 @@ test("release version is synchronized across packages, plugins, and servers", as
   ]) {
     assert.match(
       await readFile(path, "utf8"),
-      /export const [A-Z_]+_VERSION = "0\.3\.3"/,
+      /export const [A-Z_]+_VERSION = "0\.3\.4"/,
     );
   }
   const marketplace = JSON.parse(
@@ -48,8 +48,8 @@ test("release version is synchronized across packages, plugins, and servers", as
     metadata: { version: string };
     plugins: Array<{ version: string }>;
   };
-  assert.equal(marketplace.metadata.version, "0.3.3");
-  assert.equal(marketplace.plugins[0]?.version, "0.3.3");
+  assert.equal(marketplace.metadata.version, "0.3.4");
+  assert.equal(marketplace.plugins[0]?.version, "0.3.4");
 });
 
 test("repository excludes credential artifacts and vendored Atbash source", async () => {
@@ -126,12 +126,12 @@ test("npm trusted publishing is manual, least-privilege, and retry-safe", async 
 
   const verified = await execute(
     process.execPath,
-    ["scripts/verify-release-version.mjs", "v0.3.3"],
+    ["scripts/verify-release-version.mjs", "v0.3.4"],
     { cwd: process.cwd() },
   );
   assert.equal(
     (JSON.parse(verified.stdout) as { version: string }).version,
-    "0.3.3",
+    "0.3.4",
   );
   await assert.rejects(
     execute(
