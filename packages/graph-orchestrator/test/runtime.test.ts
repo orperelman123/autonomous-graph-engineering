@@ -868,6 +868,20 @@ test("parses reliable Codex and Claude usage envelopes", () => {
     outputTokens: 7,
     costUsd: 0.25,
   });
+  assert.equal(claude.attribution, undefined);
+
+  const claudeWithModel = parseClaudeEnvelope(
+    JSON.stringify({
+      result: '{"ok":true}',
+      usage: { input_tokens: 1, output_tokens: 1 },
+      modelUsage: {
+        "claude-sonnet-5": { inputTokens: 1, outputTokens: 1 },
+      },
+    }),
+  );
+  assert.deepEqual(claudeWithModel.attribution, {
+    model: "claude-sonnet-5",
+  });
 });
 
 test("stops when actual provider usage exceeds the graph token budget", async () => {
@@ -1336,6 +1350,88 @@ test("a graph-global token ceiling still stops independent branches", async () =
     assert.equal(result.nodes.a_budget?.failureKind, "budget");
     assert.equal(result.nodes.a_budget?.failureScope, "graph");
     assert.equal(result.nodes.b_independent?.state, "pending");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("executor attribution is recorded on node results, checkpoints, and audit events", async () => {
+  class AttributingExecutor implements GraphExecutor {
+    readonly name = "attributing";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      return {
+        output: { completed: true, nodeId: request.nodeId },
+        usage: { inputTokens: 3, outputTokens: 2 },
+        attribution: {
+          provider: "claude",
+          model: "claude-sonnet-5",
+          latencyMs: 1_200,
+          retries: 1,
+        },
+      };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect one local result.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "a_attributed",
+      label: "Attributed work",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-attribution-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new AttributingExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "completed");
+    assert.deepEqual(result.nodes.a_attributed?.attribution, {
+      provider: "claude",
+      model: "claude-sonnet-5",
+      latencyMs: 1_200,
+      retries: 1,
+    });
+    const checkpoint = await loadCheckpoint(directory, result.runId);
+    assert.deepEqual(checkpoint.nodes.a_attributed?.attribution, {
+      provider: "claude",
+      model: "claude-sonnet-5",
+      latencyMs: 1_200,
+      retries: 1,
+    });
+    const events = (await readFile(result.auditPath!, "utf8"))
+      .trim()
+      .split("\n")
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            type: string;
+            nodeId?: string;
+            data?: Record<string, unknown>;
+          },
+      );
+    const completedEvent = events.find(
+      (event) =>
+        event.type === "node_completed" && event.nodeId === "a_attributed",
+    );
+    assert.deepEqual(completedEvent?.data?.attribution, {
+      provider: "claude",
+      model: "claude-sonnet-5",
+      latencyMs: 1_200,
+      retries: 1,
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
