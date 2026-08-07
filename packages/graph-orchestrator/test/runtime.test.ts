@@ -2079,3 +2079,100 @@ test("rejects traversal run IDs and malformed checkpoints", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("aborts in-flight fan-out siblings when one item fails", async () => {
+  let siblingSawAbort = false;
+  class HangingSiblingExecutor implements GraphExecutor {
+    readonly name = "hanging-sibling";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "seed") {
+        return { output: [1, 2] };
+      }
+      if (request.nodeId === "fan:0") {
+        await new Promise<void>((resolve) => {
+          if (request.signal?.aborted) {
+            siblingSawAbort = true;
+            resolve();
+            return;
+          }
+          request.signal?.addEventListener(
+            "abort",
+            () => {
+              siblingSawAbort = true;
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        throw new Error("sibling aborted");
+      }
+      throw new Error("root failure");
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect two sources concurrently.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "seed",
+      label: "Seed",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "fan",
+      label: "Fan",
+      kind: "parallel_map",
+      dependsOn: ["seed"],
+      permission: "read",
+      executor: "local",
+      maxConcurrency: 2,
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 2;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-fanout-abort-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new HangingSiblingExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.nodes.fan?.state, "failed");
+    assert.match(result.nodes.fan?.error ?? "", /root failure/);
+    assert.equal(siblingSawAbort, true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a failed audit write does not poison later writes", async () => {
+  const { JsonlEventStore } = await import("../src/persistence.js");
+  const directory = await mkdtemp(join(tmpdir(), "graph-store-recovery-"));
+  const blocker = join(directory, "blocker");
+  try {
+    await writeFile(blocker, "occupied", "utf8");
+    const store = new JsonlEventStore(join(blocker, "nested"), "run-1");
+    await assert.rejects(
+      store.append({ runId: "run-1", type: "run_started" }),
+    );
+    await rm(blocker);
+    const event = await store.append({
+      runId: "run-1",
+      type: "run_completed",
+    });
+    assert.equal(event.sequence, 2);
+    const content = await readFile(store.path, "utf8");
+    assert.match(content, /run_completed/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

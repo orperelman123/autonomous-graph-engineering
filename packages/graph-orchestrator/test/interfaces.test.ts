@@ -464,3 +464,44 @@ test("HTTP API rejects browser-originated and non-JSON POST requests", async () 
     );
   }
 });
+
+test("HTTP approvals are ignored without the explicit opt-in flag", async () => {
+  assert.equal(process.env.GRAPH_ENGINEER_ALLOW_HTTP_APPROVALS, undefined);
+  const previousCwd = process.cwd();
+  const workingDirectory = await mkdtemp(join(tmpdir(), "graph-http-gate-"));
+  const server = startGraphServer({
+    host: "127.0.0.1",
+    port: 0,
+    apiKey: "test-secret",
+  });
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    process.chdir(workingDirectory);
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const base = `http://127.0.0.1:${address.port}`;
+    const response = await fetch(`${base}/v1/graphs/run`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-secret",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: "Deploy the approved application to production.",
+        autonomy: "consequential",
+        primaryExecutor: "local",
+        verifierExecutor: "local",
+        approvals: ["forged-approval-token"],
+      }),
+    });
+    assert.equal(response.status, 200);
+    const result = (await response.json()) as { status: string };
+    assert.equal(result.status, "needs_confirmation");
+  } finally {
+    process.chdir(previousCwd);
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+    await rm(workingDirectory, { recursive: true, force: true });
+  }
+});
