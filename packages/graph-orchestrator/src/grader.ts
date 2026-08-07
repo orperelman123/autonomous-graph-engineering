@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { loadCheckpoint } from "./persistence.js";
+import { assertSafeRunId, loadCheckpoint } from "./persistence.js";
 import { graphFingerprint } from "./runtime.js";
 import { validateGraph } from "./validator.js";
 
@@ -34,7 +34,7 @@ export async function gradeCheckpoint(
   const validation = validateGraph(checkpoint.graph);
   const graphIntegrity =
     checkpoint.graphHash === graphFingerprint(checkpoint.graph);
-  const auditPath = resolve(directory, `${runId}.jsonl`);
+  const auditPath = resolve(directory, `${assertSafeRunId(runId)}.jsonl`);
   const events = (await readFile(auditPath, "utf8"))
     .trim()
     .split(/\r?\n/)

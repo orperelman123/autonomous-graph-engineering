@@ -204,6 +204,10 @@ export interface GraphRunCheckpoint {
   startedAt: string;
   updatedAt: string;
   eventSequence: number;
+  /** Cumulative wall-clock execution time across the original run and every
+   * resume, so budgets.timeoutMs bounds the run's lifetime rather than
+   * resetting on each resume. Absent on legacy checkpoints. */
+  elapsedMs?: number;
   reconciliations?: ReconciliationRecord[];
 }
 

@@ -4,6 +4,15 @@ const SECRET_PATTERNS: Array<[RegExp, string]> = [
   [/\b(sk-[A-Za-z0-9_-]{16,})\b/g, "[REDACTED_OPENAI_KEY]"],
   [/\b(sk-ant-[A-Za-z0-9_-]{16,})\b/g, "[REDACTED_ANTHROPIC_KEY]"],
   [/\b(gh[opsu]_[A-Za-z0-9]{20,})\b/g, "[REDACTED_GITHUB_TOKEN]"],
+  [/\b(AKIA[0-9A-Z]{16})\b/g, "[REDACTED_AWS_KEY]"],
+  [
+    /\b(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})\b/g,
+    "[REDACTED_JWT]",
+  ],
+  [
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    "[REDACTED_PRIVATE_KEY]",
+  ],
   [
     /\b(Bearer\s+)[A-Za-z0-9._~+/=-]{16,}\b/gi,
     "$1[REDACTED_TOKEN]",
@@ -21,9 +30,13 @@ export function redactSecrets(value: string): {
   let text = value;
   let redactions = 0;
   for (const [pattern, replacement] of SECRET_PATTERNS) {
-    text = text.replace(pattern, () => {
+    text = text.replace(pattern, (...args) => {
       redactions += 1;
-      return replacement.replace("$1", "");
+      const groups = args.slice(1, -2) as Array<string | undefined>;
+      return replacement.replace(
+        /\$(\d)/g,
+        (_placeholder, digit: string) => groups[Number(digit) - 1] ?? "",
+      );
     });
   }
   return { text, redactions };

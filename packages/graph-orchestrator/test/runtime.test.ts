@@ -1885,3 +1885,294 @@ test("rejects operator-verified output that violates the node schema", async () 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("a failed fan-out item keeps sibling usage and cancels unstarted items", async () => {
+  const executed: string[] = [];
+  class FanoutFailureExecutor implements GraphExecutor {
+    readonly name = "fanout-failure";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "seed") {
+        return { output: [1, 2, 3] };
+      }
+      executed.push(request.nodeId);
+      if (request.nodeId === "fan:1") {
+        throw new Error("item exploded");
+      }
+      return {
+        output: { completed: true },
+        usage: { inputTokens: 7, outputTokens: 3 },
+      };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect each source in sequence.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "seed",
+      label: "Seed",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "fan",
+      label: "Fan",
+      kind: "parallel_map",
+      dependsOn: ["seed"],
+      permission: "read",
+      executor: "local",
+      maxConcurrency: 1,
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 1;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-fanout-usage-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new FanoutFailureExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.nodes.fan?.state, "failed");
+    assert.match(result.nodes.fan?.error ?? "", /item exploded/);
+    assert.deepEqual(executed, ["fan:0", "fan:1"]);
+    assert.equal(result.nodes.fan?.usage?.inputTokens, 7);
+    assert.equal(result.nodes.fan?.usage?.outputTokens, 3);
+    assert.equal(result.usage.inputTokens, 7);
+    assert.equal(result.usage.outputTokens, 3);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("an undefined fan-out item fails the node instead of being silently dropped", async () => {
+  class SparseSeedExecutor implements GraphExecutor {
+    readonly name = "sparse-seed";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "seed") {
+        return { output: [1, undefined, 3] };
+      }
+      return { output: { completed: true } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect each source in sequence.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "seed",
+      label: "Seed",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "fan",
+      label: "Fan",
+      kind: "parallel_map",
+      dependsOn: ["seed"],
+      permission: "read",
+      executor: "local",
+      maxConcurrency: 1,
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 1;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-fanout-sparse-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new SparseSeedExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.nodes.fan?.state, "failed");
+    assert.match(result.nodes.fan?.error ?? "", /fan-out item 1 is undefined/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("the wall-clock budget spans resumes instead of resetting", async () => {
+  class GateResumeExecutor implements GraphExecutor {
+    readonly name = "gate-resume";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "acceptance") {
+        return { output: { accepted: true, reasons: [] } };
+      }
+      return { output: { completed: true, nodeId: request.nodeId } };
+    }
+  }
+  const graph = planGraph({
+    prompt: "Deploy the approved application to production.",
+    autonomy: "consequential",
+    primaryExecutor: "local",
+    verifierExecutor: "local",
+  });
+  const directory = await mkdtemp(join(tmpdir(), "graph-resume-deadline-"));
+  try {
+    const executor = new GateResumeExecutor();
+    const blocked = await runGraph(graph, {
+      executors: { local: executor },
+      auditDirectory: directory,
+    });
+    assert.equal(blocked.status, "needs_confirmation");
+    assert.ok(blocked.confirmation);
+    const checkpoint = await loadCheckpoint(directory, blocked.runId);
+
+    const resumed = await runGraph(graph, {
+      executors: { local: executor },
+      auditDirectory: directory,
+      approvals: [blocked.confirmation.approvalToken],
+      resume: { ...checkpoint, elapsedMs: graph.budgets.timeoutMs },
+    });
+    assert.equal(resumed.status, "failed");
+    const timedOut = Object.values(resumed.nodes).find(
+      (node) => node.failureKind === "timeout",
+    );
+    assert.ok(
+      timedOut,
+      "a node should fail with a timeout when the lifetime budget is spent",
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects traversal run IDs and malformed checkpoints", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "graph-persistence-guard-"));
+  try {
+    await assert.rejects(
+      loadCheckpoint(directory, "../escape"),
+      /run ID/,
+    );
+    await assert.rejects(
+      loadCheckpoint(directory, "..\..\escape"),
+      /run ID/,
+    );
+    await writeFile(
+      join(directory, "bad.checkpoint.json"),
+      JSON.stringify({ version: "1.0", runId: "bad" }),
+      "utf8",
+    );
+    await assert.rejects(
+      loadCheckpoint(directory, "bad"),
+      /invalid checkpoint/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("aborts in-flight fan-out siblings when one item fails", async () => {
+  let siblingSawAbort = false;
+  class HangingSiblingExecutor implements GraphExecutor {
+    readonly name = "hanging-sibling";
+    async execute(
+      request: AgentExecutionRequest,
+    ): Promise<AgentExecutionResult> {
+      if (request.nodeId === "seed") {
+        return { output: [1, 2] };
+      }
+      if (request.nodeId === "fan:0") {
+        await new Promise<void>((resolve) => {
+          if (request.signal?.aborted) {
+            siblingSawAbort = true;
+            resolve();
+            return;
+          }
+          request.signal?.addEventListener(
+            "abort",
+            () => {
+              siblingSawAbort = true;
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        throw new Error("sibling aborted");
+      }
+      throw new Error("root failure");
+    }
+  }
+  const graph = planGraph({
+    prompt: "Inspect two sources concurrently.",
+    autonomy: "read_only",
+    primaryExecutor: "local",
+    forceGraph: true,
+  });
+  graph.nodes = [
+    {
+      id: "seed",
+      label: "Seed",
+      kind: "agent",
+      dependsOn: [],
+      permission: "read",
+      executor: "local",
+    },
+    {
+      id: "fan",
+      label: "Fan",
+      kind: "parallel_map",
+      dependsOn: ["seed"],
+      permission: "read",
+      executor: "local",
+      maxConcurrency: 2,
+    },
+  ];
+  delete graph.repairPolicy;
+  graph.budgets.maxParallel = 2;
+  graph.budgets.timeoutMs = 10_000;
+  const directory = await mkdtemp(join(tmpdir(), "graph-fanout-abort-"));
+  try {
+    const result = await runGraph(graph, {
+      executors: { local: new HangingSiblingExecutor() },
+      auditDirectory: directory,
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.nodes.fan?.state, "failed");
+    assert.match(result.nodes.fan?.error ?? "", /root failure/);
+    assert.equal(siblingSawAbort, true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a failed audit write does not poison later writes", async () => {
+  const { JsonlEventStore } = await import("../src/persistence.js");
+  const directory = await mkdtemp(join(tmpdir(), "graph-store-recovery-"));
+  const blocker = join(directory, "blocker");
+  try {
+    await writeFile(blocker, "occupied", "utf8");
+    const store = new JsonlEventStore(join(blocker, "nested"), "run-1");
+    await assert.rejects(
+      store.append({ runId: "run-1", type: "run_started" }),
+    );
+    await rm(blocker);
+    const event = await store.append({
+      runId: "run-1",
+      type: "run_completed",
+    });
+    assert.equal(event.sequence, 2);
+    const content = await readFile(store.path, "utf8");
+    assert.match(content, /run_completed/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
