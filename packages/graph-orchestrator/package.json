@@ -49,6 +49,6 @@
     "access": "public"
   },
   "optionalDependencies": {
-    "@atbash/sdk": "0.6.0"
+    "@atbash/sdk": "0.6.2"
   }
 }
