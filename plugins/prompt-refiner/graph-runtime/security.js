@@ -1,0 +1,205 @@
+import { createHash } from "node:crypto";
+import { isAbsolute } from "node:path";
+import { pathToFileURL } from "node:url";
+import { ClaudeCliExecutor, CodexCliExecutor, LocalEchoExecutor, } from "./executors.js";
+export class AtbashSecurityProvider {
+    client;
+    constructor(client) {
+        this.client = client;
+    }
+    async authorize(request) {
+        const result = await this.client.auditToolCall({
+            toolName: `graph-engineer.${request.executor}`,
+            args: {
+                protocolVersion: request.version,
+                runId: request.runId,
+                nodeId: request.nodeId,
+                permission: request.permission,
+                promptSha256: request.promptSha256,
+                inputSha256: request.inputSha256,
+                ...(request.idempotencyKeySha256
+                    ? { idempotencyKeySha256: request.idempotencyKeySha256 }
+                    : {}),
+            },
+            context: "Graph Engineer executor authorization",
+        });
+        if (result.allow === true)
+            return { decision: "allow" };
+        if (result.verdict === "HOLD")
+            return { decision: "hold" };
+        if (result.verdict === "BLOCK")
+            return { decision: "block" };
+        if (result.verdict === "ERROR") {
+            throw new Error("Atbash authorization unavailable");
+        }
+        throw new Error("Atbash authorization response is invalid");
+    }
+}
+class LazyAtbashSecurityProvider {
+    provider;
+    async load() {
+        if (!this.provider) {
+            this.provider = import("@atbash/sdk").then(({ Atbash }) => new AtbashSecurityProvider(Atbash.fromConfig({
+                failClosed: true,
+                logger: {},
+            })));
+        }
+        return await this.provider;
+    }
+    async authorize(request) {
+        return await (await this.load()).authorize(request);
+    }
+}
+function sha256(value) {
+    const serialized = typeof value === "string" ? value : (JSON.stringify(value) ?? "undefined");
+    return createHash("sha256").update(serialized).digest("hex");
+}
+function authorizationRequest(executor, request) {
+    return {
+        version: "1",
+        runId: request.runId,
+        nodeId: request.nodeId,
+        executor: executor.name,
+        permission: request.permission,
+        promptSha256: sha256(request.prompt),
+        inputSha256: sha256(request.input),
+        ...(request.idempotencyKey
+            ? { idempotencyKeySha256: sha256(request.idempotencyKey) }
+            : {}),
+        timeoutMs: request.timeoutMs,
+        ...(request.signal ? { signal: request.signal } : {}),
+    };
+}
+function isProvider(value) {
+    return (typeof value === "object" &&
+        value !== null &&
+        typeof value.authorize === "function");
+}
+class LazyModuleSecurityProvider {
+    modulePath;
+    provider;
+    constructor(modulePath) {
+        this.modulePath = modulePath;
+    }
+    async load() {
+        if (!this.provider) {
+            this.provider = (async () => {
+                const loaded = (await import(pathToFileURL(this.modulePath).href));
+                if (typeof loaded.createGraphSecurityProvider !== "function") {
+                    throw new Error("provider factory is unavailable");
+                }
+                const provider = await loaded.createGraphSecurityProvider();
+                if (!isProvider(provider)) {
+                    throw new Error("provider contract is invalid");
+                }
+                return provider;
+            })();
+        }
+        return await this.provider;
+    }
+    async authorize(request) {
+        return await (await this.load()).authorize(request);
+    }
+}
+export class SecurityGatedExecutor {
+    delegate;
+    provider;
+    name;
+    constructor(delegate, provider) {
+        this.delegate = delegate;
+        this.provider = provider;
+        this.name = delegate.name;
+    }
+    async execute(request) {
+        const startedAt = Date.now();
+        let decision;
+        let timer;
+        let abort;
+        try {
+            const authorization = this.provider.authorize(authorizationRequest(this.delegate, request));
+            const deadline = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("authorization timed out")), request.timeoutMs);
+                if (request.signal) {
+                    abort = () => reject(new Error("authorization aborted"));
+                    if (request.signal.aborted)
+                        abort();
+                    else
+                        request.signal.addEventListener("abort", abort, { once: true });
+                }
+            });
+            decision = await Promise.race([authorization, deadline]);
+        }
+        catch {
+            throw new Error("external security provider unavailable; execution denied");
+        }
+        finally {
+            if (timer)
+                clearTimeout(timer);
+            if (abort && request.signal) {
+                request.signal.removeEventListener("abort", abort);
+            }
+        }
+        if (decision?.decision !== "allow" &&
+            decision?.decision !== "hold" &&
+            decision?.decision !== "block") {
+            throw new Error("external security provider returned an invalid decision");
+        }
+        if (decision.decision !== "allow") {
+            throw new Error(`external security provider ${decision.decision === "hold" ? "held" : "blocked"} execution`);
+        }
+        const remainingTimeoutMs = request.timeoutMs - (Date.now() - startedAt);
+        if (remainingTimeoutMs <= 0) {
+            throw new Error("external security provider unavailable; execution denied");
+        }
+        return await this.delegate.execute({
+            ...request,
+            timeoutMs: remainingTimeoutMs,
+        });
+    }
+}
+export function securityProviderFromEnvironment(environment = process.env) {
+    const selected = environment.GRAPH_ENGINEER_SECURITY_PROVIDER?.trim();
+    const modulePath = environment.GRAPH_ENGINEER_SECURITY_PROVIDER_MODULE;
+    if (selected && modulePath) {
+        return {
+            async authorize() {
+                throw new Error("multiple security providers configured");
+            },
+        };
+    }
+    if (selected === "atbash")
+        return new LazyAtbashSecurityProvider();
+    if (selected) {
+        return {
+            async authorize() {
+                throw new Error("unknown security provider");
+            },
+        };
+    }
+    if (!modulePath)
+        return undefined;
+    if (!isAbsolute(modulePath)) {
+        return {
+            async authorize() {
+                throw new Error("provider module path must be absolute");
+            },
+        };
+    }
+    return new LazyModuleSecurityProvider(modulePath);
+}
+export function defaultExecutors(environment = process.env) {
+    const executors = {
+        codex: new CodexCliExecutor(),
+        claude: new ClaudeCliExecutor(),
+        local: new LocalEchoExecutor(),
+    };
+    const provider = securityProviderFromEnvironment(environment);
+    if (!provider)
+        return executors;
+    return {
+        codex: new SecurityGatedExecutor(executors.codex, provider),
+        claude: new SecurityGatedExecutor(executors.claude, provider),
+        local: new SecurityGatedExecutor(executors.local, provider),
+    };
+}
+//# sourceMappingURL=security.js.map

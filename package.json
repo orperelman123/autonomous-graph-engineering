@@ -33,7 +33,9 @@
     "release-gate": "node scripts/github-release-gate.mjs",
     "benchmark:providers:live": "node scripts/live-provider-benchmark.mjs",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "link-check": "node scripts/check-links.mjs"
+    "link-check": "node scripts/check-links.mjs",
+    "sync:plugin-runtime": "node scripts/sync-plugin-runtime.mjs",
+    "postbuild": "npm run sync:plugin-runtime"
   },
   "engines": {
     "node": ">=20"

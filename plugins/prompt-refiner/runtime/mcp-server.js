@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+import { createInterface } from "node:readline";
+import { collectContext } from "./context.js";
+import { refinePrompt } from "./provider.js";
+import { runEvaluation } from "./evaluation.js";
+import { getRuntimeInfo } from "./runtime-info.js";
+import { PROMPT_REFINER_VERSION } from "./version.js";
+function send(message) {
+    process.stdout.write(`${JSON.stringify(message)}\n`);
+}
+function result(id, value) {
+    send({ jsonrpc: "2.0", id: id ?? null, result: value });
+}
+function error(id, code, message) {
+    send({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
+}
+const TOOLS = [
+    {
+        name: "refine_prompt",
+        description: "Convert a user request into an intent-preserving, permission-safe execution brief.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                prompt: { type: "string", minLength: 1 },
+                mode: {
+                    type: "string",
+                    enum: ["auto", "silent", "visible", "strict"],
+                },
+                semantic: { type: "boolean" },
+                cwd: { type: "string", minLength: 1 },
+            },
+            required: ["prompt"],
+            additionalProperties: false,
+        },
+    },
+    {
+        name: "get_runtime_info",
+        description: "Report the active GraphVigil installation identity and whether this host must reload after an upgrade.",
+        inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+        },
+    },
+    {
+        name: "evaluate_prompt_refiner",
+        description: "Run the built-in deterministic safety and intent-preservation evaluation suite.",
+        inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+        },
+    },
+];
+async function handle(request) {
+    if (request.method === "initialize") {
+        result(request.id, {
+            protocolVersion: request.params?.protocolVersion ??
+                "2025-03-26",
+            capabilities: { tools: {} },
+            serverInfo: {
+                name: "prompt-refiner",
+                version: PROMPT_REFINER_VERSION,
+            },
+            instructions: "Use refine_prompt before substantive work. Preserve the original request and never expand permissions.",
+        });
+        return;
+    }
+    if (request.method === "notifications/initialized")
+        return;
+    if (request.method === "ping") {
+        result(request.id, {});
+        return;
+    }
+    if (request.method === "tools/list") {
+        result(request.id, { tools: TOOLS });
+        return;
+    }
+    if (request.method === "tools/call") {
+        const name = request.params?.name;
+        const args = (request.params?.arguments ?? {});
+        if (name === "refine_prompt") {
+            if (typeof args.prompt !== "string") {
+                error(request.id, -32602, "prompt must be a string");
+                return;
+            }
+            const refined = await refinePrompt({
+                prompt: args.prompt,
+                ...(typeof args.mode === "string"
+                    ? { mode: args.mode }
+                    : {}),
+                ...(typeof args.semantic === "boolean"
+                    ? { semantic: args.semantic }
+                    : {}),
+                ...(typeof args.cwd === "string"
+                    ? { context: await collectContext(args.cwd) }
+                    : {}),
+            });
+            result(request.id, {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(refined, null, 2),
+                    },
+                ],
+                structuredContent: refined,
+            });
+            return;
+        }
+        if (name === "evaluate_prompt_refiner") {
+            const report = runEvaluation();
+            result(request.id, {
+                content: [
+                    { type: "text", text: JSON.stringify(report, null, 2) },
+                ],
+                structuredContent: report,
+                isError: report.failed > 0,
+            });
+            return;
+        }
+        if (name === "get_runtime_info") {
+            const runtimeInfo = await getRuntimeInfo("prompt-refiner", PROMPT_REFINER_VERSION);
+            result(request.id, {
+                content: [
+                    { type: "text", text: JSON.stringify(runtimeInfo, null, 2) },
+                ],
+                structuredContent: runtimeInfo,
+                isError: runtimeInfo.reloadRequired,
+            });
+            return;
+        }
+        error(request.id, -32601, `unknown tool: ${String(name)}`);
+        return;
+    }
+    error(request.id, -32601, `unknown method: ${request.method}`);
+}
+const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
+lines.on("line", (line) => {
+    if (!line.trim())
+        return;
+    void (async () => {
+        try {
+            await handle(JSON.parse(line));
+        }
+        catch (caught) {
+            error(null, -32700, caught.message);
+        }
+    })();
+});
+//# sourceMappingURL=mcp-server.js.map
