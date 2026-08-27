@@ -5,6 +5,13 @@ import {
   runEvaluation,
 } from "../src/index.js";
 
+// Keep gate behaviour deterministic regardless of the developer's shell:
+// PROMPT_REFINER_GATE / PROMPT_REFINER_REFINE_ALL are operator overrides and
+// must never leak into the default-behaviour assertions below.
+delete process.env.PROMPT_REFINER_GATE;
+delete process.env.PROMPT_REFINER_REFINE_ALL;
+
+
 test("preserves the original prompt exactly", () => {
   const prompt = "Build the API, but do not deploy it.";
   const result = compilePrompt({ prompt });

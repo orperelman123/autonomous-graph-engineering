@@ -6,6 +6,13 @@ import {
   buildHookResponse,
 } from "../src/hook.js";
 
+// Keep gate behaviour deterministic regardless of the developer's shell:
+// PROMPT_REFINER_GATE / PROMPT_REFINER_REFINE_ALL are operator overrides and
+// must never leak into the default-behaviour assertions below.
+delete process.env.PROMPT_REFINER_GATE;
+delete process.env.PROMPT_REFINER_REFINE_ALL;
+
+
 test("hook adds context only for prompts that are ready", () => {
   const response = buildHookResponse(
     "UserPromptSubmit",

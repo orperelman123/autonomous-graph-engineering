@@ -21,6 +21,15 @@ function actionableText(prompt) {
 function firstMatchIndex(prompt, pattern) {
     return prompt.search(pattern);
 }
+/**
+ * PROMPT_REFINER_REFINE_ALL=on refines every prompt, including short
+ * conversational ones ("yes", "ok", "continue") that are otherwise passed
+ * through untouched. Useful when an operator wants a terse message expanded
+ * into a full execution brief rather than forwarded verbatim.
+ */
+function refineAll() {
+    return (process.env.PROMPT_REFINER_REFINE_ALL ?? "off").toLowerCase() === "on";
+}
 function classify(prompt) {
     if (PASS_THROUGH.test(prompt.trim()))
         return "conversation";
@@ -197,7 +206,7 @@ export function compilePrompt(request) {
         warnings.push(`${redactions} possible secret value(s) were redacted from the refinement context.`);
     }
     const clarificationQuestion = needsClarification(safePrompt, classification);
-    const passThrough = classification === "conversation";
+    const passThrough = classification === "conversation" && !refineAll();
     const consequential = classification === "external_action" ||
         classification === "destructive_action";
     let status = "ready";

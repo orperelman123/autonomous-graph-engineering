@@ -1,5 +1,25 @@
 import type { RefinementResult } from "./types.js";
 
+/**
+ * PROMPT_REFINER_GATE=off lets an operator keep prompt refinement while
+ * disabling the blocking gates (clarification / confirmation). Prompts are
+ * still refined into an execution brief and still carry their warnings - they
+ * simply are not halted. Any value other than "off" keeps the gates on.
+ */
+function gatesEnabled(): boolean {
+  return (process.env.PROMPT_REFINER_GATE ?? "on").toLowerCase() !== "off";
+}
+
+function briefResponse(eventName: string, result: RefinementResult): unknown {
+  return {
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: eventName,
+      additionalContext: result.effectivePrompt,
+    },
+  };
+}
+
 export function buildHookResponse(
   eventName: string,
   result: RefinementResult,
@@ -8,6 +28,7 @@ export function buildHookResponse(
     return { continue: true };
   }
   if (result.status === "clarification_needed") {
+    if (!gatesEnabled()) return briefResponse(eventName, result);
     return {
       decision: "block",
       reason:
@@ -16,6 +37,7 @@ export function buildHookResponse(
     };
   }
   if (result.status === "confirmation_required") {
+    if (!gatesEnabled()) return briefResponse(eventName, result);
     return {
       decision: "block",
       reason:
