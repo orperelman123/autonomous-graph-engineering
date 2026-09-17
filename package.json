@@ -37,10 +37,10 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0",
+    "@types/node": "^22.20.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "tsx": "^4.20.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.8.0"
   }
 }
